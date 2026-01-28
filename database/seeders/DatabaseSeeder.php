@@ -15,10 +15,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Seed lookup tables
+        // Seed all tables
         $this->call([
+            CountryCitySeeder::class,
             LookupSeeder::class,
             OwnerConsultantSeeder::class,
+            RolePermissionSeeder::class,
+            SequenceSeeder::class,
         ]);
     }
 }
