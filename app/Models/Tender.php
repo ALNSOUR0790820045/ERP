@@ -240,6 +240,97 @@ class Tender extends Model
         return $this->hasOne(TenderDecision::class);
     }
 
+    // العلاقات الجديدة حسب وثيقة العطاءات الأردنية
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(TenderAnnouncement::class);
+    }
+
+    public function bidDataSheet(): HasOne
+    {
+        return $this->hasOne(TenderBidDataSheet::class);
+    }
+
+    public function eligibilityRequirements(): HasMany
+    {
+        return $this->hasMany(TenderEligibilityRequirement::class);
+    }
+
+    public function technicalCriteria(): HasMany
+    {
+        return $this->hasMany(TenderTechnicalCriterion::class);
+    }
+
+    public function bidLetter(): HasOne
+    {
+        return $this->hasOne(TenderBidLetter::class);
+    }
+
+    public function technicalProposal(): HasOne
+    {
+        return $this->hasOne(TenderTechnicalProposal::class);
+    }
+
+    public function financialProposal(): HasOne
+    {
+        return $this->hasOne(TenderFinancialProposal::class);
+    }
+
+    public function bonds(): HasMany
+    {
+        return $this->hasMany(TenderBond::class);
+    }
+
+    public function submission(): HasOne
+    {
+        return $this->hasOne(TenderSubmission::class);
+    }
+
+    public function clarifications(): HasMany
+    {
+        return $this->hasMany(TenderClarification::class);
+    }
+
+    public function addenda(): HasMany
+    {
+        return $this->hasMany(TenderAddendum::class);
+    }
+
+    public function evaluationCommittees(): HasMany
+    {
+        return $this->hasMany(TenderEvaluationCommittee::class);
+    }
+
+    public function awardDecision(): HasOne
+    {
+        return $this->hasOne(TenderAwardDecision::class);
+    }
+
+    public function workflowLogs(): HasMany
+    {
+        return $this->hasMany(TenderWorkflowLog::class);
+    }
+
+    public function swotAnalyses(): HasMany
+    {
+        return $this->hasMany(TenderSwotAnalysis::class);
+    }
+
+    public function risks(): HasMany
+    {
+        return $this->hasMany(TenderRisk::class);
+    }
+
+    public function decisionCriteria(): HasMany
+    {
+        return $this->hasMany(TenderDecisionCriterion::class);
+    }
+
+    public function competitors(): HasMany
+    {
+        return $this->hasMany(TenderCompetitor::class);
+    }
+
     // Accessors
     public function getNameAttribute(): string
     {
