@@ -4,9 +4,8 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use App\Models\FixedAsset;
-use App\Models\FixedAssetCategory;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class FixedAssetsWidget extends StatsOverviewWidget
 {
@@ -19,20 +18,36 @@ class FixedAssetsWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        // التحقق من وجود الجدول
+        if (!Schema::hasTable('fixed_assets')) {
+            return [
+                Stat::make('إجمالي الأصول', '0')
+                    ->description('لا توجد بيانات')
+                    ->descriptionIcon('heroicon-m-cube')
+                    ->color('gray'),
+            ];
+        }
+
         // إجمالي الأصول
-        $totalAssets = FixedAsset::count();
+        $totalAssets = DB::table('fixed_assets')->whereNull('deleted_at')->count();
         
         // إجمالي القيمة الدفترية
-        $totalBookValue = FixedAsset::where('status', 'active')
+        $totalBookValue = DB::table('fixed_assets')
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
             ->selectRaw('SUM(acquisition_cost - COALESCE(accumulated_depreciation, 0)) as book_value')
             ->value('book_value') ?? 0;
         
         // إجمالي الإهلاك المتراكم
-        $totalDepreciation = FixedAsset::where('status', 'active')
+        $totalDepreciation = DB::table('fixed_assets')
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
             ->sum('accumulated_depreciation') ?? 0;
         
         // أصول تحتاج صيانة
-        $assetsNeedingMaintenance = FixedAsset::where('status', 'active')
+        $assetsNeedingMaintenance = DB::table('fixed_assets')
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
             ->where('next_maintenance_date', '<=', now()->addDays(30))
             ->count();
         

@@ -5,10 +5,9 @@ namespace App\Filament\Widgets;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use App\Models\Contract;
-use App\Models\ProgressCertificate;
-use App\Models\JournalEntry;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class FinancialOverviewWidget extends StatsOverviewWidget
 {
@@ -24,23 +23,34 @@ class FinancialOverviewWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         // إجمالي قيمة العقود النشطة
-        $totalContracts = Contract::where('status', 'active')
-            ->sum('contract_value') ?? 0;
+        $totalContracts = Schema::hasTable('contracts') 
+            ? (Contract::where('status', 'active')->sum('contract_value') ?? 0)
+            : 0;
         
         // إجمالي المستخلصات المعتمدة هذا الشهر
-        $monthlyIPC = ProgressCertificate::where('status', 'approved')
-            ->whereMonth('approval_date', now()->month)
-            ->whereYear('approval_date', now()->year)
-            ->sum('net_amount') ?? 0;
+        $monthlyIPC = 0;
+        if (Schema::hasTable('progress_certificates')) {
+            $monthlyIPC = DB::table('progress_certificates')
+                ->where('status', 'approved')
+                ->whereMonth('approval_date', now()->month)
+                ->whereYear('approval_date', now()->year)
+                ->sum('net_amount') ?? 0;
+        }
         
         // المستخلصات المعلقة
-        $pendingIPC = ProgressCertificate::where('status', 'pending')
-            ->count();
+        $pendingIPC = 0;
+        if (Schema::hasTable('progress_certificates')) {
+            $pendingIPC = DB::table('progress_certificates')
+                ->where('status', 'pending')
+                ->count();
+        }
         
         // إجمالي الإيرادات هذا العام
-        $yearlyRevenue = Invoice::whereYear('invoice_date', now()->year)
-            ->where('status', 'paid')
-            ->sum('total_amount') ?? 0;
+        $yearlyRevenue = Schema::hasTable('invoices')
+            ? (Invoice::whereYear('invoice_date', now()->year)
+                ->where('status', 'paid')
+                ->sum('total_amount') ?? 0)
+            : 0;
         
         return [
             Stat::make('العقود النشطة', number_format($totalContracts) . ' د.أ')

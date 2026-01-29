@@ -3,9 +3,8 @@
 namespace App\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
-use App\Models\ContractRetention;
-use App\Models\Contract;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ContractRetentionsWidget extends ChartWidget
 {
@@ -20,8 +19,16 @@ class ContractRetentionsWidget extends ChartWidget
 
     protected function getData(): array
     {
+        if (!Schema::hasTable('contract_retentions')) {
+            return [
+                'datasets' => [['data' => [0], 'backgroundColor' => ['rgb(156, 163, 175)']]],
+                'labels' => ['لا توجد بيانات'],
+            ];
+        }
+        
         // الحصول على محتجزات العقود حسب الحالة
-        $retentions = ContractRetention::select('status', DB::raw('SUM(amount) as total'))
+        $retentions = DB::table('contract_retentions')
+            ->select('status', DB::raw('SUM(amount) as total'))
             ->groupBy('status')
             ->get()
             ->pluck('total', 'status')
@@ -44,6 +51,13 @@ class ContractRetentionsWidget extends ChartWidget
                 $data[] = $total;
                 $colors[] = $statusMap[$status]['color'];
             }
+        }
+        
+        if (empty($data)) {
+            return [
+                'datasets' => [['data' => [0], 'backgroundColor' => ['rgb(156, 163, 175)']]],
+                'labels' => ['لا توجد محتجزات'],
+            ];
         }
         
         return [

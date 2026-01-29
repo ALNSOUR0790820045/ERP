@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         // موارد المشروع
+        if (!Schema::hasTable('project_resources')) {
         Schema::create('project_resources', function (Blueprint $table) {
             $table->id();
             $table->foreignId('project_id')->constrained()->cascadeOnDelete();
@@ -24,8 +25,10 @@ return new class extends Migration
             
             $table->timestamps();
         });
+        }
 
         // تخصيص الموارد للأنشطة
+        if (!Schema::hasTable('project_resource_assignments')) {
         Schema::create('project_resource_assignments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('wbs_id')->constrained('project_wbs')->cascadeOnDelete();
@@ -39,8 +42,10 @@ return new class extends Migration
             
             $table->timestamps();
         });
+        }
 
         // تحديثات التقدم
+        if (!Schema::hasTable('project_progress_updates')) {
         Schema::create('project_progress_updates', function (Blueprint $table) {
             $table->id();
             $table->foreignId('project_id')->constrained()->cascadeOnDelete();
@@ -56,8 +61,10 @@ return new class extends Migration
             $table->foreignId('updated_by')->nullable()->constrained('users');
             $table->timestamps();
         });
+        }
 
         // Baseline
+        if (!Schema::hasTable('project_baselines')) {
         Schema::create('project_baselines', function (Blueprint $table) {
             $table->id();
             $table->foreignId('project_id')->constrained()->cascadeOnDelete();
@@ -71,8 +78,10 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->timestamps();
         });
+        }
 
         // بيانات Baseline للأنشطة
+        if (!Schema::hasTable('project_baseline_details')) {
         Schema::create('project_baseline_details', function (Blueprint $table) {
             $table->id();
             $table->foreignId('baseline_id')->constrained('project_baselines')->cascadeOnDelete();
@@ -85,6 +94,7 @@ return new class extends Migration
             
             $table->timestamps();
         });
+        }
     }
 
     public function down(): void

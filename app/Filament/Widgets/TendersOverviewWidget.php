@@ -2,11 +2,10 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Tender;
-use App\Models\Tenders\TenderAlert;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class TendersOverviewWidget extends BaseWidget
 {
@@ -16,27 +15,40 @@ class TendersOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $tenderModel = Tender::class;
+        if (!Schema::hasTable('tenders')) {
+            return [
+                Stat::make('إجمالي العطاءات', '0')
+                    ->description('لا توجد بيانات')
+                    ->color('gray'),
+            ];
+        }
         
         // إحصائيات العطاءات
-        $totalTenders = $tenderModel::count();
-        $activeTenders = $tenderModel::where('status', 'active')
+        $totalTenders = DB::table('tenders')->count();
+        $activeTenders = DB::table('tenders')
+            ->where('status', 'active')
             ->orWhere('status', 'in_progress')
             ->count();
-        $pendingSubmission = $tenderModel::where('status', 'draft')
+        $pendingSubmission = DB::table('tenders')
+            ->where('status', 'draft')
             ->orWhere('status', 'pending')
             ->count();
-        $wonTenders = $tenderModel::where('status', 'won')->count();
-        $lostTenders = $tenderModel::where('status', 'lost')->count();
+        $wonTenders = DB::table('tenders')->where('status', 'won')->count();
+        $lostTenders = DB::table('tenders')->where('status', 'lost')->count();
         
         // تنبيهات العطاءات العاجلة
-        $urgentAlerts = TenderAlert::where('priority', 'urgent')
-            ->where('is_active', true)
-            ->whereNull('resolved_at')
-            ->count();
+        $urgentAlerts = 0;
+        if (Schema::hasTable('tender_alerts')) {
+            $urgentAlerts = DB::table('tender_alerts')
+                ->where('priority', 'urgent')
+                ->where('is_active', true)
+                ->whereNull('resolved_at')
+                ->count();
+        }
 
         // مواعيد الإغلاق القريبة (7 أيام)
-        $upcomingDeadlines = $tenderModel::where('submission_deadline', '>=', now())
+        $upcomingDeadlines = DB::table('tenders')
+            ->where('submission_deadline', '>=', now())
             ->where('submission_deadline', '<=', now()->addDays(7))
             ->whereIn('status', ['active', 'in_progress', 'pending'])
             ->count();

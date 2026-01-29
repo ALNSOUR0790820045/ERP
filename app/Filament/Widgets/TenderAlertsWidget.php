@@ -2,68 +2,31 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Tenders\TenderAlert;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Widgets\TableWidget as BaseWidget;
+use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
-class TenderAlertsWidget extends BaseWidget
+class TenderAlertsWidget extends Widget
 {
     protected static ?string $heading = 'تنبيهات العطاءات';
     protected static ?int $sort = 3;
-    protected int | string | array $columnSpan = 'full';
-
-    public function table(Table $table): Table
+    protected int | string | array $columnSpan = 1;
+    
+    protected static string $view = 'filament.widgets.tender-alerts-widget';
+    
+    public function getAlerts(): array
     {
-        return $table
-            ->query(
-                TenderAlert::query()
-                    ->where('is_active', true)
-                    ->whereNull('resolved_at')
-                    ->orderByRaw("CASE 
-                        WHEN priority = 'urgent' THEN 1 
-                        WHEN priority = 'high' THEN 2 
-                        WHEN priority = 'medium' THEN 3 
-                        ELSE 4 
-                    END")
-                    ->orderBy('alert_date', 'desc')
-            )
-            ->columns([
-                Tables\Columns\TextColumn::make('tender.name_ar')
-                    ->label('العطاء')
-                    ->limit(30),
-                Tables\Columns\TextColumn::make('alert_type')
-                    ->label('نوع التنبيه')
-                    ->badge()
-                    ->formatStateUsing(fn($state) => TenderAlert::ALERT_TYPES[$state] ?? $state)
-                    ->color('info'),
-                Tables\Columns\TextColumn::make('priority')
-                    ->label('الأولوية')
-                    ->badge()
-                    ->formatStateUsing(fn($state) => TenderAlert::PRIORITIES[$state] ?? $state)
-                    ->color(fn($state) => match($state) {
-                        'urgent' => 'danger',
-                        'high' => 'warning',
-                        'medium' => 'info',
-                        'low' => 'gray',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('alert_date')
-                    ->label('التاريخ')
-                    ->date()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('message')
-                    ->label('الرسالة')
-                    ->limit(50),
-            ])
-            ->paginated([5, 10])
-            ->defaultPaginationPageOption(5)
-            ->actions([
-                Tables\Actions\Action::make('resolve')
-                    ->label('حل')
-                    ->icon('heroicon-o-check')
-                    ->color('success')
-                    ->action(fn ($record) => $record->resolve(auth()->user())),
-            ]);
+        if (!Schema::hasTable('tender_alerts')) {
+            return [];
+        }
+        
+        return DB::table('tender_alerts')
+            ->where('is_active', true)
+            ->whereNull('resolved_at')
+            ->orderBy('priority')
+            ->orderByDesc('alert_date')
+            ->limit(5)
+            ->get()
+            ->toArray();
     }
 }

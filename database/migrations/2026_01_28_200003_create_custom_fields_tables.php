@@ -111,7 +111,6 @@ return new class extends Migration
             $table->timestamps();
             
             $table->unique(['definition_id', 'entity_type', 'entity_id'], 'custom_field_values_unique');
-            $table->index(['entity_type', 'entity_id']);
         });
         }
 

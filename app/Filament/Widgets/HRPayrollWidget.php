@@ -4,10 +4,8 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use App\Models\Employee;
-use App\Models\Payroll;
-use App\Models\SocialSecuritySetting;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class HRPayrollWidget extends StatsOverviewWidget
 {
@@ -21,26 +19,38 @@ class HRPayrollWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         // عدد الموظفين النشطين
-        $activeEmployees = Employee::where('status', 'active')->count();
+        $activeEmployees = Schema::hasTable('employees') 
+            ? DB::table('employees')->where('status', 'active')->count() 
+            : 0;
         
         // إجمالي الرواتب الشهرية
-        $monthlyPayroll = Payroll::whereMonth('payroll_date', now()->month)
-            ->whereYear('payroll_date', now()->year)
-            ->sum('net_salary') ?? 0;
+        $monthlyPayroll = 0;
+        if (Schema::hasTable('payrolls')) {
+            $monthlyPayroll = DB::table('payrolls')
+                ->whereMonth('payroll_date', now()->month)
+                ->whereYear('payroll_date', now()->year)
+                ->sum('net_salary') ?? 0;
+        }
         
         // اشتراكات الضمان الاجتماعي
-        $socialSecuritySetting = SocialSecuritySetting::where('year', now()->year)
-            ->where('is_active', true)
-            ->first();
-        
-        $socialSecurityRate = $socialSecuritySetting 
-            ? ($socialSecuritySetting->employer_rate + $socialSecuritySetting->employee_rate) 
-            : 21.75;
+        $socialSecurityRate = 21.75;
+        if (Schema::hasTable('social_security_settings')) {
+            $setting = DB::table('social_security_settings')
+                ->where('year', now()->year)
+                ->where('is_active', true)
+                ->first();
+            if ($setting) {
+                $socialSecurityRate = ($setting->employer_rate ?? 0) + ($setting->employee_rate ?? 0);
+            }
+        }
         
         // الموظفون الجدد هذا الشهر
-        $newEmployees = Employee::whereMonth('hire_date', now()->month)
-            ->whereYear('hire_date', now()->year)
-            ->count();
+        $newEmployees = Schema::hasTable('employees') 
+            ? DB::table('employees')
+                ->whereMonth('hire_date', now()->month)
+                ->whereYear('hire_date', now()->year)
+                ->count() 
+            : 0;
         
         return [
             Stat::make('الموظفون النشطون', number_format($activeEmployees))

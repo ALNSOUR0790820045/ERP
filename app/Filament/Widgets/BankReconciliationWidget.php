@@ -4,9 +4,8 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use App\Models\BankAccount;
-use App\Models\BankReconciliation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class BankReconciliationWidget extends StatsOverviewWidget
 {
@@ -19,24 +18,45 @@ class BankReconciliationWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        if (!Schema::hasTable('bank_accounts')) {
+            return [
+                Stat::make('الحسابات البنكية', '0')
+                    ->description('لا توجد بيانات')
+                    ->color('gray'),
+            ];
+        }
+        
         // عدد الحسابات البنكية النشطة
-        $activeBankAccounts = BankAccount::where('is_active', true)->count();
-        
-        // آخر تسوية
-        $lastReconciliation = BankReconciliation::latest('reconciliation_date')
-            ->first();
-        
-        // الحسابات التي تحتاج تسوية (لم تُسوَّ هذا الشهر)
-        $accountsNeedReconciliation = BankAccount::where('is_active', true)
-            ->whereDoesntHave('reconciliations', function ($query) {
-                $query->whereMonth('reconciliation_date', now()->month)
-                    ->whereYear('reconciliation_date', now()->year);
-            })
+        $activeBankAccounts = DB::table('bank_accounts')
+            ->where('is_active', true)
             ->count();
         
-        // إجمالي الفروقات غير المطابقة
-        $unreconciledDifferences = BankReconciliation::where('status', 'pending')
-            ->sum('difference_amount') ?? 0;
+        // آخر تسوية
+        $lastReconciliation = null;
+        $unreconciledDifferences = 0;
+        $accountsNeedReconciliation = 0;
+        
+        if (Schema::hasTable('bank_reconciliations')) {
+            $lastReconciliation = DB::table('bank_reconciliations')
+                ->orderBy('reconciliation_date', 'desc')
+                ->first();
+            
+            $unreconciledDifferences = DB::table('bank_reconciliations')
+                ->where('status', 'pending')
+                ->sum('difference_amount') ?? 0;
+            
+            // الحسابات التي تحتاج تسوية
+            $reconciledThisMonth = DB::table('bank_reconciliations')
+                ->whereMonth('reconciliation_date', now()->month)
+                ->whereYear('reconciliation_date', now()->year)
+                ->pluck('bank_account_id')
+                ->toArray();
+            
+            $accountsNeedReconciliation = DB::table('bank_accounts')
+                ->where('is_active', true)
+                ->whereNotIn('id', $reconciledThisMonth)
+                ->count();
+        }
         
         return [
             Stat::make('الحسابات البنكية', $activeBankAccounts)
@@ -44,8 +64,8 @@ class BankReconciliationWidget extends StatsOverviewWidget
                 ->descriptionIcon('heroicon-m-building-library')
                 ->color('primary'),
             
-            Stat::make('آخر تسوية', $lastReconciliation?->reconciliation_date?->format('Y-m-d') ?? 'لا يوجد')
-                ->description($lastReconciliation?->bankAccount?->account_name ?? '')
+            Stat::make('آخر تسوية', $lastReconciliation?->reconciliation_date ?? 'لا يوجد')
+                ->description('')
                 ->descriptionIcon('heroicon-m-calendar')
                 ->color('info'),
             

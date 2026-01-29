@@ -2,83 +2,34 @@
 
 namespace App\Filament\Widgets;
 
-use Filament\Widgets\TableWidget;
-use Filament\Tables;
-use Filament\Tables\Table;
-use App\Models\MaterialStock;
-use App\Models\Material;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Widgets\Widget;
+use Illuminate\Support\Facades\Schema;
 
-class InventoryAlertsWidget extends TableWidget
+class InventoryAlertsWidget extends Widget
 {
     protected static ?int $sort = 3;
     
-    protected int|string|array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 1;
+    
+    protected static string $view = 'filament.widgets.inventory-alerts-widget';
     
     public function getHeading(): ?string
     {
         return 'تنبيهات المخزون';
     }
-
-    public function table(Table $table): Table
+    
+    public function getAlerts(): array
     {
-        return $table
-            ->query(
-                MaterialStock::query()
-                    ->with(['material', 'warehouse'])
-                    ->whereHas('material', function (Builder $query) {
-                        $query->whereColumn('material_stocks.quantity', '<=', 'materials.reorder_level');
-                    })
-                    ->orWhere('quantity', '<=', 0)
-                    ->limit(10)
-            )
-            ->columns([
-                Tables\Columns\TextColumn::make('material.name')
-                    ->label('المادة')
-                    ->searchable()
-                    ->sortable(),
-                
-                Tables\Columns\TextColumn::make('warehouse.name')
-                    ->label('المستودع')
-                    ->sortable(),
-                
-                Tables\Columns\TextColumn::make('quantity')
-                    ->label('الكمية المتوفرة')
-                    ->numeric()
-                    ->color(fn ($state) => $state <= 0 ? 'danger' : 'warning'),
-                
-                Tables\Columns\TextColumn::make('material.reorder_level')
-                    ->label('حد إعادة الطلب')
-                    ->numeric(),
-                
-                Tables\Columns\TextColumn::make('material.unit.name')
-                    ->label('الوحدة'),
-                
-                Tables\Columns\BadgeColumn::make('status')
-                    ->label('الحالة')
-                    ->getStateUsing(function ($record) {
-                        if ($record->quantity <= 0) {
-                            return 'نفاد';
-                        }
-                        return 'منخفض';
-                    })
-                    ->colors([
-                        'danger' => 'نفاد',
-                        'warning' => 'منخفض',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\Action::make('create_pr')
-                    ->label('طلب شراء')
-                    ->icon('heroicon-o-shopping-cart')
-                    ->color('primary')
-                    ->url(fn ($record) => route('filament.admin.resources.purchase-requests.create', [
-                        'material_id' => $record->material_id,
-                    ]))
-                    ->openUrlInNewTab(),
-            ])
-            ->emptyStateHeading('لا توجد تنبيهات')
-            ->emptyStateDescription('جميع المواد ضمن مستويات المخزون الآمنة')
-            ->emptyStateIcon('heroicon-o-check-circle');
+        if (!Schema::hasTable('inventory_balances') || !Schema::hasTable('items')) {
+            return [];
+        }
+        
+        return \Illuminate\Support\Facades\DB::table('inventory_balances')
+            ->join('items', 'inventory_balances.item_id', '=', 'items.id')
+            ->select('items.name as item_name', 'inventory_balances.quantity', 'items.reorder_level')
+            ->whereRaw('inventory_balances.quantity <= COALESCE(items.reorder_level, 0)')
+            ->limit(10)
+            ->get()
+            ->toArray();
     }
 }

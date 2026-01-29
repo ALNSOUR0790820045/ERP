@@ -3,9 +3,8 @@
 namespace App\Filament\Widgets;
 
 use Filament\Widgets\ChartWidget;
-use App\Models\ProgressCertificate;
-use App\Models\Invoice;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class MonthlyRevenueChart extends ChartWidget
 {
@@ -26,23 +25,34 @@ class MonthlyRevenueChart extends ChartWidget
         $ipcData = [];
         $invoiceData = [];
         
+        $hasProgressCertificates = Schema::hasTable('progress_certificates');
+        $hasInvoices = Schema::hasTable('invoices');
+        
         // الحصول على بيانات آخر 12 شهر
         for ($i = 11; $i >= 0; $i--) {
             $date = now()->subMonths($i);
             $months[] = $date->translatedFormat('M Y');
             
             // المستخلصات المعتمدة
-            $ipcTotal = ProgressCertificate::where('status', 'approved')
-                ->whereMonth('approval_date', $date->month)
-                ->whereYear('approval_date', $date->year)
-                ->sum('net_amount') ?? 0;
+            $ipcTotal = 0;
+            if ($hasProgressCertificates) {
+                $ipcTotal = DB::table('progress_certificates')
+                    ->where('status', 'approved')
+                    ->whereMonth('approval_date', $date->month)
+                    ->whereYear('approval_date', $date->year)
+                    ->sum('net_amount') ?? 0;
+            }
             $ipcData[] = $ipcTotal;
             
             // الفواتير المحصلة
-            $invoiceTotal = Invoice::where('status', 'paid')
-                ->whereMonth('payment_date', $date->month)
-                ->whereYear('payment_date', $date->year)
-                ->sum('total_amount') ?? 0;
+            $invoiceTotal = 0;
+            if ($hasInvoices) {
+                $invoiceTotal = DB::table('invoices')
+                    ->where('status', 'paid')
+                    ->whereMonth('payment_date', $date->month)
+                    ->whereYear('payment_date', $date->year)
+                    ->sum('total_amount') ?? 0;
+            }
             $invoiceData[] = $invoiceTotal;
         }
         
@@ -78,9 +88,6 @@ class MonthlyRevenueChart extends ChartWidget
             'scales' => [
                 'y' => [
                     'beginAtZero' => true,
-                    'ticks' => [
-                        'callback' => "function(value) { return value.toLocaleString() + ' د.أ'; }",
-                    ],
                 ],
             ],
             'plugins' => [

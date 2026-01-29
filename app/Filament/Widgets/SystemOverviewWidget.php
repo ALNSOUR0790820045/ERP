@@ -2,12 +2,10 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Company;
-use App\Models\Project;
-use App\Models\Tender;
-use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SystemOverviewWidget extends BaseWidget
 {
@@ -17,25 +15,35 @@ class SystemOverviewWidget extends BaseWidget
 
     protected function getStats(): array
     {
-        $company = Company::first();
+        $companyName = 'غير محدد';
+        $legalName = '';
+        if (Schema::hasTable('companies')) {
+            $company = DB::table('companies')->first();
+            $companyName = $company?->name_ar ?? $company?->name ?? 'غير محدد';
+            $legalName = $company?->legal_name ?? '';
+        }
+        
+        $usersCount = Schema::hasTable('users') ? DB::table('users')->count() : 0;
+        $projectsCount = Schema::hasTable('projects') ? DB::table('projects')->count() : 0;
+        $tendersCount = Schema::hasTable('tenders') ? DB::table('tenders')->count() : 0;
         
         return [
-            Stat::make('الشركة', $company?->name_ar ?? 'غير محدد')
-                ->description($company?->legal_name ?? '')
+            Stat::make('الشركة', $companyName)
+                ->description($legalName)
                 ->icon('heroicon-o-building-office-2')
                 ->color('primary'),
 
-            Stat::make('المستخدمين', User::count())
+            Stat::make('المستخدمين', $usersCount)
                 ->description('المستخدمين النشطين')
                 ->icon('heroicon-o-users')
                 ->color('info'),
 
-            Stat::make('المشاريع', class_exists(Project::class) ? Project::count() : 0)
+            Stat::make('المشاريع', $projectsCount)
                 ->description('إجمالي المشاريع')
                 ->icon('heroicon-o-briefcase')
                 ->color('success'),
 
-            Stat::make('العطاءات', Tender::count())
+            Stat::make('العطاءات', $tendersCount)
                 ->description('إجمالي العطاءات')
                 ->icon('heroicon-o-document-text')
                 ->color('warning'),

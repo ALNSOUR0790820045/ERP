@@ -2,10 +2,10 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\EvmMeasurement;
-use App\Models\Project;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class EvmDashboardWidget extends BaseWidget
 {
@@ -20,8 +20,16 @@ class EvmDashboardWidget extends BaseWidget
 
     protected function getStats(): array
     {
+        if (!Schema::hasTable('evm_measurements')) {
+            return [
+                Stat::make('قياسات EVM', '0')
+                    ->description('لا توجد بيانات')
+                    ->color('gray'),
+            ];
+        }
+
         // الحصول على أحدث قياسات EVM للمشاريع النشطة
-        $latestMeasurements = EvmMeasurement::query()
+        $latestMeasurements = DB::table('evm_measurements')
             ->whereIn('id', function ($query) {
                 $query->selectRaw('MAX(id)')
                     ->from('evm_measurements')
@@ -39,8 +47,8 @@ class EvmDashboardWidget extends BaseWidget
         }
 
         // حساب المتوسطات
-        $avgSpi = $latestMeasurements->avg('schedule_performance_index');
-        $avgCpi = $latestMeasurements->avg('cost_performance_index');
+        $avgSpi = $latestMeasurements->avg('schedule_performance_index') ?? 0;
+        $avgCpi = $latestMeasurements->avg('cost_performance_index') ?? 0;
         
         // المشاريع المتأخرة
         $behindSchedule = $latestMeasurements->where('schedule_performance_index', '<', 0.90)->count();
@@ -52,20 +60,18 @@ class EvmDashboardWidget extends BaseWidget
         $criticalProjects = $latestMeasurements->where('overall_status', 'red')->count();
 
         // إجمالي الفرق المتوقع
-        $totalVac = $latestMeasurements->sum('variance_at_completion');
+        $totalVac = $latestMeasurements->sum('variance_at_completion') ?? 0;
 
         return [
             Stat::make('متوسط SPI', number_format($avgSpi, 2))
                 ->description('مؤشر أداء الجدول الزمني')
                 ->descriptionIcon($avgSpi >= 0.95 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($avgSpi >= 0.95 ? 'success' : ($avgSpi >= 0.80 ? 'warning' : 'danger'))
-                ->chart($this->getSpiTrend()),
+                ->color($avgSpi >= 0.95 ? 'success' : ($avgSpi >= 0.80 ? 'warning' : 'danger')),
 
             Stat::make('متوسط CPI', number_format($avgCpi, 2))
                 ->description('مؤشر أداء التكلفة')
                 ->descriptionIcon($avgCpi >= 0.95 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
-                ->color($avgCpi >= 0.95 ? 'success' : ($avgCpi >= 0.80 ? 'warning' : 'danger'))
-                ->chart($this->getCpiTrend()),
+                ->color($avgCpi >= 0.95 ? 'success' : ($avgCpi >= 0.80 ? 'warning' : 'danger')),
 
             Stat::make('متأخرة عن الجدول', $behindSchedule)
                 ->description('مشاريع SPI < 0.90')
@@ -82,34 +88,10 @@ class EvmDashboardWidget extends BaseWidget
                 ->descriptionIcon('heroicon-m-exclamation-triangle')
                 ->color($criticalProjects > 0 ? 'danger' : 'success'),
 
-            Stat::make('الفرق المتوقع (VAC)', number_format($totalVac, 0) . ' JOD')
+            Stat::make('الفرق المتوقع (VAC)', number_format($totalVac, 0) . ' د.أ')
                 ->description($totalVac >= 0 ? 'وفر متوقع' : 'تجاوز متوقع')
                 ->descriptionIcon($totalVac >= 0 ? 'heroicon-m-arrow-trending-up' : 'heroicon-m-arrow-trending-down')
                 ->color($totalVac >= 0 ? 'success' : 'danger'),
         ];
-    }
-
-    protected function getSpiTrend(): array
-    {
-        $measurements = EvmMeasurement::query()
-            ->where('status', 'approved')
-            ->orderBy('measurement_date')
-            ->limit(10)
-            ->pluck('schedule_performance_index')
-            ->toArray();
-
-        return array_map(fn($v) => $v * 100, $measurements);
-    }
-
-    protected function getCpiTrend(): array
-    {
-        $measurements = EvmMeasurement::query()
-            ->where('status', 'approved')
-            ->orderBy('measurement_date')
-            ->limit(10)
-            ->pluck('cost_performance_index')
-            ->toArray();
-
-        return array_map(fn($v) => $v * 100, $measurements);
     }
 }

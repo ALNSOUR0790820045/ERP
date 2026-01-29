@@ -2,8 +2,9 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\EvmMeasurement;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class EvmPerformanceChart extends ChartWidget
 {
@@ -15,16 +16,29 @@ class EvmPerformanceChart extends ChartWidget
 
     protected function getData(): array
     {
+        if (!Schema::hasTable('evm_measurements')) {
+            return [
+                'datasets' => [],
+                'labels' => ['لا توجد بيانات'],
+            ];
+        }
+
         // الحصول على أحدث 6 قياسات
-        $measurements = EvmMeasurement::query()
-            ->with('project')
+        $measurements = DB::table('evm_measurements')
             ->where('status', 'approved')
             ->orderByDesc('measurement_date')
             ->limit(6)
             ->get()
             ->reverse();
 
-        $labels = $measurements->map(fn($m) => $m->measurement_date->format('Y-m-d'))->toArray();
+        if ($measurements->isEmpty()) {
+            return [
+                'datasets' => [],
+                'labels' => ['لا توجد قياسات'],
+            ];
+        }
+
+        $labels = $measurements->map(fn($m) => $m->measurement_date)->toArray();
         $spiData = $measurements->pluck('schedule_performance_index')->toArray();
         $cpiData = $measurements->pluck('cost_performance_index')->toArray();
 
