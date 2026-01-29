@@ -22,7 +22,7 @@ class BimModelResource extends Resource
     protected static ?string $navigationLabel = 'نماذج BIM';
     protected static ?string $modelLabel = 'نموذج BIM';
     protected static ?string $pluralModelLabel = 'نماذج BIM';
-    protected static ?string $navigationGroup = 'المشاريع';
+    protected static ?string $navigationGroup = 'المشاريع والعقود';
     protected static ?int $navigationSort = 88;
 
     public static function form(Form $form): Form

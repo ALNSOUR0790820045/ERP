@@ -16,7 +16,7 @@ class TenderFinancialProposalResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
     
-    protected static ?string $navigationGroup = 'إدارة العطاءات';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
     
     protected static ?string $modelLabel = 'عرض مالي';
     

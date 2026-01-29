@@ -15,7 +15,7 @@ class ContractRetentionResource extends Resource
     protected static ?string $model = ContractRetention::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-lock-closed';
-    protected static ?string $navigationGroup = 'العقود والمشاريع';
+    protected static ?string $navigationGroup = 'المشاريع والعقود';
     protected static ?string $modelLabel = 'محتجز عقد';
     protected static ?string $pluralModelLabel = 'محتجزات العقود';
     protected static ?int $navigationSort = 6;

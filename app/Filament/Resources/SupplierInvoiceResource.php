@@ -14,7 +14,7 @@ class SupplierInvoiceResource extends Resource
 {
     protected static ?string $model = SupplierInvoice::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'المالية';
+    protected static ?string $navigationGroup = 'المشتريات والمخازن';
     protected static ?int $navigationSort = 10;
 
     public static function getModelLabel(): string

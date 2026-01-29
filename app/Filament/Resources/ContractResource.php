@@ -21,7 +21,7 @@ class ContractResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     
-    protected static ?string $navigationGroup = 'العقود';
+    protected static ?string $navigationGroup = 'المشاريع والعقود';
     
     protected static ?int $navigationSort = 1;
 

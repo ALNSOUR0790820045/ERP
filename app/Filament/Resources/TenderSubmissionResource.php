@@ -16,7 +16,7 @@ class TenderSubmissionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-inbox-arrow-down';
     
-    protected static ?string $navigationGroup = 'إدارة العطاءات';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
     
     protected static ?string $modelLabel = 'تقديم عطاء';
     

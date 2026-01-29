@@ -15,7 +15,7 @@ class FixedAssetCategoryResource extends Resource
     protected static ?string $model = FixedAssetCategory::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-folder';
-    protected static ?string $navigationGroup = 'الأصول الثابتة';
+    protected static ?string $navigationGroup = 'المالية والمحاسبة';
     protected static ?string $modelLabel = 'تصنيف أصول';
     protected static ?string $pluralModelLabel = 'تصنيفات الأصول';
     protected static ?int $navigationSort = 0;

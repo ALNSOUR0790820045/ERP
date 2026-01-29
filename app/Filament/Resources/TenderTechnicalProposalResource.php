@@ -16,7 +16,7 @@ class TenderTechnicalProposalResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-check';
     
-    protected static ?string $navigationGroup = 'العطاءات';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
     
     protected static ?string $navigationLabel = 'العروض الفنية';
     

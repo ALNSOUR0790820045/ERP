@@ -16,7 +16,7 @@ class BudgetResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-calculator';
 
-    protected static ?string $navigationGroup = 'المالية';
+    protected static ?string $navigationGroup = 'المالية والمحاسبة';
 
     protected static ?string $modelLabel = 'موازنة';
 

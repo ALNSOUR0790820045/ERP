@@ -18,7 +18,7 @@ class ChequeBookResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
 
-    protected static ?string $navigationGroup = 'Finance & Accounting';
+    protected static ?string $navigationGroup = 'المالية والمحاسبة';
 
     protected static ?string $navigationLabel = 'Cheque Books';
 

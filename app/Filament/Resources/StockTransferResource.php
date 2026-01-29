@@ -15,7 +15,7 @@ class StockTransferResource extends Resource
     protected static ?string $model = StockTransfer::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
-    protected static ?string $navigationGroup = 'المستودعات';
+    protected static ?string $navigationGroup = 'المشتريات والمخازن';
     protected static ?string $modelLabel = 'تحويل مخزون';
     protected static ?string $pluralModelLabel = 'تحويلات المخزون';
     protected static ?int $navigationSort = 5;

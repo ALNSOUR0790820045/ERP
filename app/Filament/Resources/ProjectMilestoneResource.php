@@ -14,7 +14,7 @@ class ProjectMilestoneResource extends Resource
 {
     protected static ?string $model = ProjectMilestone::class;
     protected static ?string $navigationIcon = 'heroicon-o-flag';
-    protected static ?string $navigationGroup = 'المشاريع';
+    protected static ?string $navigationGroup = 'المشاريع والعقود';
     protected static ?string $modelLabel = 'معلم المشروع';
     protected static ?string $pluralModelLabel = 'معالم المشاريع';
     protected static ?int $navigationSort = 15;

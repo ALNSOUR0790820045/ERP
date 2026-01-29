@@ -15,7 +15,7 @@ class StockCountResource extends Resource
     protected static ?string $model = StockCount::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';
-    protected static ?string $navigationGroup = 'المستودعات';
+    protected static ?string $navigationGroup = 'المشتريات والمخازن';
     protected static ?string $modelLabel = 'جرد مخزون';
     protected static ?string $pluralModelLabel = 'جرد المخزون';
     protected static ?int $navigationSort = 6;

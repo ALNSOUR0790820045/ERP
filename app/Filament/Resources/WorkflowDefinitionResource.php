@@ -15,7 +15,7 @@ class WorkflowDefinitionResource extends Resource
     protected static ?string $model = WorkflowDefinition::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-path';
-    protected static ?string $navigationGroup = 'الإعدادات';
+    protected static ?string $navigationGroup = 'إعدادات النظام';
     protected static ?string $modelLabel = 'سير عمل';
     protected static ?string $pluralModelLabel = 'سير العمل';
     protected static ?int $navigationSort = 30;

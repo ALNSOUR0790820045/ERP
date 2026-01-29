@@ -18,7 +18,7 @@ class NotificationTemplateResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-bell-alert';
 
-    protected static ?string $navigationGroup = 'الإعدادات';
+    protected static ?string $navigationGroup = 'إدارة المستندات';
 
     protected static ?string $navigationLabel = 'قوالب الإشعارات';
 

@@ -16,7 +16,7 @@ class TenderBondResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';
     
-    protected static ?string $navigationGroup = 'العطاءات';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
     
     protected static ?string $navigationLabel = 'كفالات العطاءات';
     

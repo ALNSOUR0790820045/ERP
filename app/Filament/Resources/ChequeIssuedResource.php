@@ -20,7 +20,7 @@ class ChequeIssuedResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
-    protected static ?string $navigationGroup = 'Finance & Accounting';
+    protected static ?string $navigationGroup = 'المالية والمحاسبة';
 
     protected static ?string $navigationLabel = 'Cheques Issued';
 

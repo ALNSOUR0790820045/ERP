@@ -14,7 +14,7 @@ class WarehouseLocationResource extends Resource
 {
     protected static ?string $model = WarehouseLocation::class;
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
-    protected static ?string $navigationGroup = 'المستودعات';
+    protected static ?string $navigationGroup = 'المشتريات والمخازن';
     protected static ?string $modelLabel = 'موقع تخزين';
     protected static ?string $pluralModelLabel = 'مواقع التخزين';
     protected static ?int $navigationSort = 15;

@@ -16,7 +16,7 @@ class PurchaseRequestResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
 
-    protected static ?string $navigationGroup = 'المشتريات';
+    protected static ?string $navigationGroup = 'المشتريات والمخازن';
 
     protected static ?string $modelLabel = 'طلب شراء';
 

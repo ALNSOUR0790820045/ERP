@@ -15,7 +15,7 @@ class StockAdjustmentResource extends Resource
     protected static ?string $model = StockAdjustment::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-adjustments-horizontal';
-    protected static ?string $navigationGroup = 'المستودعات';
+    protected static ?string $navigationGroup = 'المشتريات والمخازن';
     protected static ?string $modelLabel = 'تسوية مخزون';
     protected static ?string $pluralModelLabel = 'تسويات المخزون';
     protected static ?int $navigationSort = 7;

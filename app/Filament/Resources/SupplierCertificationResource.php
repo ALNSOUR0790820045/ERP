@@ -18,6 +18,7 @@ class SupplierCertificationResource extends Resource
     protected static ?string $model = SupplierCertification::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'المشتريات والمخازن';
 
     public static function form(Form $form): Form
     {

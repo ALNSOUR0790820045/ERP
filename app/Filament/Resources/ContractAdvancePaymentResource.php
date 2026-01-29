@@ -15,7 +15,7 @@ class ContractAdvancePaymentResource extends Resource
     protected static ?string $model = ContractAdvancePayment::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-banknotes';
-    protected static ?string $navigationGroup = 'العقود والمشاريع';
+    protected static ?string $navigationGroup = 'المشاريع والعقود';
     protected static ?string $modelLabel = 'دفعة مقدمة';
     protected static ?string $pluralModelLabel = 'الدفعات المقدمة';
     protected static ?int $navigationSort = 7;

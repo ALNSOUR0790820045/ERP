@@ -16,7 +16,7 @@ class TenderBidDataSheetResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     
-    protected static ?string $navigationGroup = 'العطاءات';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
     
     protected static ?string $navigationLabel = 'جداول بيانات المناقصة';
     

@@ -16,7 +16,7 @@ class FixedAssetResource extends Resource
     protected static ?string $model = FixedAsset::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
-    protected static ?string $navigationGroup = 'الأصول الثابتة';
+    protected static ?string $navigationGroup = 'المالية والمحاسبة';
     protected static ?string $modelLabel = 'أصل ثابت';
     protected static ?string $pluralModelLabel = 'الأصول الثابتة';
     protected static ?int $navigationSort = 1;

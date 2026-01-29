@@ -18,6 +18,7 @@ class SupplierComplianceCheckResource extends Resource
     protected static ?string $model = SupplierComplianceCheck::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationGroup = 'المشتريات والمخازن';
 
     public static function form(Form $form): Form
     {

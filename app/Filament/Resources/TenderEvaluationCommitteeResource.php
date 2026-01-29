@@ -16,7 +16,7 @@ class TenderEvaluationCommitteeResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
     
-    protected static ?string $navigationGroup = 'إدارة العطاءات';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
     
     protected static ?string $modelLabel = 'لجنة تقييم';
     

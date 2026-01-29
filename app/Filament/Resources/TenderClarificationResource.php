@@ -16,7 +16,7 @@ class TenderClarificationResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-question-mark-circle';
     
-    protected static ?string $navigationGroup = 'العطاءات';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
     
     protected static ?string $navigationLabel = 'استيضاحات العطاءات';
     

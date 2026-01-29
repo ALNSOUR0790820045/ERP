@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Filament\Resources\WMS\PrinterResource\Pages;
+
+use App\Filament\Resources\WMS\PrinterResource;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+
+class ListPrinters extends ListRecords
+{
+    protected static string $resource = PrinterResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\CreateAction::make(),
+        ];
+    }
+}

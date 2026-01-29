@@ -14,7 +14,7 @@ class DocumentResource extends Resource
 {
     protected static ?string $model = Document::class;
     protected static ?string $navigationIcon = 'heroicon-o-folder-open';
-    protected static ?string $navigationGroup = 'إدارة الوثائق';
+    protected static ?string $navigationGroup = 'إدارة المستندات';
     protected static ?int $navigationSort = 1;
 
     public static function getModelLabel(): string

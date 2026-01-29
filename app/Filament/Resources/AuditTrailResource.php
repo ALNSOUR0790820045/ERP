@@ -15,7 +15,7 @@ class AuditTrailResource extends Resource
     protected static ?string $model = AuditTrail::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-eye';
-    protected static ?string $navigationGroup = 'الإعدادات';
+    protected static ?string $navigationGroup = 'إدارة المستندات';
     protected static ?string $modelLabel = 'سجل تدقيق';
     protected static ?string $pluralModelLabel = 'سجل التدقيق';
     protected static ?int $navigationSort = 35;

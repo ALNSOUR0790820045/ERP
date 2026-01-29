@@ -15,7 +15,7 @@ class BankReconciliationResource extends Resource
     protected static ?string $model = BankReconciliation::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-scale';
-    protected static ?string $navigationGroup = 'المالية';
+    protected static ?string $navigationGroup = 'المالية والمحاسبة';
     protected static ?string $modelLabel = 'مطابقة بنكية';
     protected static ?string $pluralModelLabel = 'مطابقات البنوك';
     protected static ?int $navigationSort = 15;

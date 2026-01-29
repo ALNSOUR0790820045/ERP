@@ -16,7 +16,7 @@ class TenderAwardDecisionResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-trophy';
     
-    protected static ?string $navigationGroup = 'العطاءات';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
     
     protected static ?string $navigationLabel = 'قرارات الإحالة';
     

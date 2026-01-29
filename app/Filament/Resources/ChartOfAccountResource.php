@@ -14,7 +14,7 @@ class ChartOfAccountResource extends Resource
 {
     protected static ?string $model = ChartOfAccount::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
-    protected static ?string $navigationGroup = 'المالية';
+    protected static ?string $navigationGroup = 'المالية والمحاسبة';
     protected static ?int $navigationSort = 1;
 
     public static function getModelLabel(): string
