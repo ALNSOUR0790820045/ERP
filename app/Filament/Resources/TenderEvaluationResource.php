@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderEvaluationResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderEvaluation::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-check';

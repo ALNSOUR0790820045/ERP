@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderBondResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderBond::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-shield-check';

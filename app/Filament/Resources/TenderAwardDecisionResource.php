@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderAwardDecisionResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderAwardDecision::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-trophy';

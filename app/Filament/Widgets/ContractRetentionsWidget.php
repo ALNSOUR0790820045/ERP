@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Schema;
 
 class ContractRetentionsWidget extends ChartWidget
 {
+    protected static bool $isLazy = true;
+    protected static ?string $pollingInterval = null;
+    
     protected static ?int $sort = 4;
     
     protected static ?string $maxHeight = '300px';

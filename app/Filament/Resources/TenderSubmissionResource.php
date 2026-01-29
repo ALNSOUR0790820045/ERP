@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderSubmissionResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderSubmission::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-inbox-arrow-down';

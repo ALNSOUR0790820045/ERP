@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 
 class NotificationsWidget extends Widget
 {
+    protected static bool $isLazy = true;
+    
     protected static string $view = 'filament.widgets.notifications-widget';
 
     protected static ?int $sort = 1;

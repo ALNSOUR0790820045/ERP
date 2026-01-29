@@ -13,6 +13,8 @@ use Filament\Tables\Table;
 
 class TenderSiteVisitResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderSiteVisit::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';

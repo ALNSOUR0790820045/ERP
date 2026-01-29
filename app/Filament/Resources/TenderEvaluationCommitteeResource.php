@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderEvaluationCommitteeResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderEvaluationCommittee::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';

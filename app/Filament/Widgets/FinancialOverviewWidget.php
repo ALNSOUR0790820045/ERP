@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Schema;
 
 class FinancialOverviewWidget extends StatsOverviewWidget
 {
+    protected static bool $isLazy = true;
+    protected static ?string $pollingInterval = null;
+    
     protected static ?int $sort = 1;
     
     protected int|string|array $columnSpan = 'full';

@@ -16,13 +16,18 @@ class OpportunityResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
 
-    protected static ?string $navigationGroup = 'العملاء (CRM)';
+    protected static ?string $navigationGroup = 'العطاءات والمناقصات';
 
-    protected static ?string $modelLabel = 'فرصة';
+    protected static ?string $navigationLabel = 'فرص البيع المباشر';
 
-    protected static ?string $pluralModelLabel = 'الفرص';
+    protected static ?string $modelLabel = 'فرصة بيع مباشر';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?string $pluralModelLabel = 'فرص البيع المباشر';
+
+    protected static ?int $navigationSort = 1;
+    
+    // مخفي - تم دمجه مع العطاءات
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function form(Form $form): Form
     {

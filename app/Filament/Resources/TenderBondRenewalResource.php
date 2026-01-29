@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderBondRenewalResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderBondRenewal::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-path';

@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Schema;
 
 class TendersOverviewWidget extends BaseWidget
 {
+    protected static bool $isLazy = true;
+    protected static ?string $pollingInterval = null;
+    
     protected ?string $heading = 'ملخص العطاءات';
     protected static ?int $sort = 1;
     protected int | string | array $columnSpan = 'full';

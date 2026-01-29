@@ -46,6 +46,22 @@ class TenderResource extends Resource
                         Forms\Components\Tabs\Tab::make('البيانات الأساسية')
                             ->icon('heroicon-o-information-circle')
                             ->schema([
+                                Forms\Components\Section::make('نوع الفرصة')
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('is_direct_sale')
+                                            ->label('فرصة بيع مباشر')
+                                            ->helperText('عند التفعيل: يتم إلغاء شراء الوثائق والكفالات وقرار الإحالة')
+                                            ->live()
+                                            ->default(false),
+                                        Forms\Components\Select::make('customer_id')
+                                            ->label('العميل')
+                                            ->relationship('customer', 'company_name')
+                                            ->searchable()
+                                            ->preload()
+                                            ->visible(fn (Forms\Get $get) => $get('is_direct_sale')),
+                                    ]),
+                                    
                                 Forms\Components\Section::make('معلومات العطاء')
                                     ->columns(3)
                                     ->schema([
@@ -198,9 +214,11 @@ class TenderResource extends Resource
                                         Forms\Components\DatePicker::make('publication_date')
                                             ->label('تاريخ النشر'),
                                         Forms\Components\DatePicker::make('documents_sale_start')
-                                            ->label('بداية بيع الوثائق'),
+                                            ->label('بداية بيع الوثائق')
+                                            ->hidden(fn (Forms\Get $get) => $get('is_direct_sale')),
                                         Forms\Components\DatePicker::make('documents_sale_end')
-                                            ->label('نهاية بيع الوثائق'),
+                                            ->label('نهاية بيع الوثائق')
+                                            ->hidden(fn (Forms\Get $get) => $get('is_direct_sale')),
                                         Forms\Components\DateTimePicker::make('site_visit_date')
                                             ->label('موعد زيارة الموقع'),
                                         Forms\Components\DateTimePicker::make('questions_deadline')
@@ -209,14 +227,16 @@ class TenderResource extends Resource
                                             ->label('موعد التقديم')
                                             ->required(),
                                         Forms\Components\DateTimePicker::make('opening_date')
-                                            ->label('موعد الفتح'),
+                                            ->label('موعد الفتح')
+                                            ->hidden(fn (Forms\Get $get) => $get('is_direct_sale')),
                                         Forms\Components\TextInput::make('validity_period')
                                             ->label('فترة الصلاحية (يوم)')
                                             ->numeric()
                                             ->default(90)
                                             ->required(),
                                         Forms\Components\DatePicker::make('expected_award_date')
-                                            ->label('تاريخ الترسية المتوقع'),
+                                            ->label('تاريخ الترسية المتوقع')
+                                            ->hidden(fn (Forms\Get $get) => $get('is_direct_sale')),
                                     ]),
                             ]),
                             
@@ -238,11 +258,13 @@ class TenderResource extends Resource
                                         Forms\Components\TextInput::make('documents_price')
                                             ->label('ثمن الوثائق')
                                             ->numeric()
-                                            ->prefix('د.أ'),
+                                            ->prefix('د.أ')
+                                            ->hidden(fn (Forms\Get $get) => $get('is_direct_sale')),
                                     ]),
                                     
                                 Forms\Components\Section::make('الضمانات')
                                     ->columns(3)
+                                    ->hidden(fn (Forms\Get $get) => $get('is_direct_sale'))
                                     ->schema([
                                         Forms\Components\Select::make('bid_bond_type')
                                             ->label('نوع ضمان العطاء')
@@ -416,7 +438,13 @@ class TenderResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\SiteVisitsRelationManager::class,
+            RelationManagers\ClarificationsRelationManager::class,
+            RelationManagers\DocumentsRelationManager::class,
+            RelationManagers\BoqItemsRelationManager::class,
+            RelationManagers\BondsRelationManager::class,
+            RelationManagers\CompetitorsRelationManager::class,
+            RelationManagers\StageLogsRelationManager::class,
         ];
     }
 

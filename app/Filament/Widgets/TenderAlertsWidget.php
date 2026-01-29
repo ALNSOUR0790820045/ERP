@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 class TenderAlertsWidget extends Widget
 {
+    protected static bool $isLazy = true;
+    
     protected static ?string $heading = 'تنبيهات العطاءات';
     protected static ?int $sort = 3;
     protected int | string | array $columnSpan = 1;

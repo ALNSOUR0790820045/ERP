@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderAnnouncementResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderAnnouncement::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-megaphone';

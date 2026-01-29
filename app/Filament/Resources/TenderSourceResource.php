@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderSourceResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderSource::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-globe-alt';

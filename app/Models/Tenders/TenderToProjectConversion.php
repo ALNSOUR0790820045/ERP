@@ -2,6 +2,8 @@
 
 namespace App\Models\Tenders;
 
+use App\Models\Tender;
+use App\Models\TenderBond;
 use App\Models\User;
 use App\Models\Projects\Project;
 use App\Models\Contracts\Contract;

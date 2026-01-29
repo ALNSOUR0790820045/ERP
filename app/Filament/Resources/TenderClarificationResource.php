@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderClarificationResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderClarification::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-question-mark-circle';

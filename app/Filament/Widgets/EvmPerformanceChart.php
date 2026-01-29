@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Schema;
 
 class EvmPerformanceChart extends ChartWidget
 {
+    protected static bool $isLazy = true;
+    protected static ?string $pollingInterval = null;
+    
     protected static ?string $heading = 'أداء المشاريع (SPI vs CPI)';
 
     protected static ?int $sort = 16;

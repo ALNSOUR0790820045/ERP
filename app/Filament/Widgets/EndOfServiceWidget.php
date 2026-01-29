@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Schema;
 
 class EndOfServiceWidget extends BaseWidget
 {
+    protected static bool $isLazy = true;
+    protected static ?string $pollingInterval = null;
+    
     protected static ?int $sort = 35;
 
     public function getHeading(): ?string

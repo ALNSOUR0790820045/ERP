@@ -2,7 +2,10 @@
 
 namespace App\Enums;
 
-enum TenderStatus: string
+use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasLabel;
+
+enum TenderStatus: string implements HasLabel, HasColor
 {
     case NEW = 'new';
     case STUDYING = 'studying';
@@ -33,6 +36,11 @@ enum TenderStatus: string
         };
     }
 
+    public function getLabel(): string
+    {
+        return $this->label();
+    }
+
     public function color(): string
     {
         return match($this) {
@@ -48,5 +56,10 @@ enum TenderStatus: string
             self::LOST => 'danger',
             self::CANCELLED => 'gray',
         };
+    }
+
+    public function getColor(): string
+    {
+        return $this->color();
     }
 }

@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderTechnicalProposalResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderTechnicalProposal::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-check';

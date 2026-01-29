@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderFinancialProposalResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderFinancialProposal::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';

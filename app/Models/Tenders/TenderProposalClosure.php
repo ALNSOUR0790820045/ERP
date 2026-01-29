@@ -2,6 +2,7 @@
 
 namespace App\Models\Tenders;
 
+use App\Models\Tender;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

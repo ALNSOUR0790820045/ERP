@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 class UpcomingTenderDeadlinesWidget extends Widget
 {
+    protected static bool $isLazy = true;
+    
     protected static ?string $heading = 'مواعيد الإغلاق القريبة';
     protected static ?int $sort = 2;
     protected int | string | array $columnSpan = 1;

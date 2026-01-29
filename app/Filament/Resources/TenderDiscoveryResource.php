@@ -20,6 +20,9 @@ class TenderDiscoveryResource extends Resource
     protected static ?string $modelLabel = 'رصد عطاء';
     protected static ?string $pluralModelLabel = 'رصد العطاءات';
     protected static ?int $navigationSort = 0;
+    
+    // مخفي - تم دمجه مع العطاءات
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function form(Form $form): Form
     {

@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Schema;
 
 class SystemOverviewWidget extends BaseWidget
 {
+    protected static bool $isLazy = true;
+    protected static ?string $pollingInterval = null;
+    
     protected ?string $heading = 'نظرة عامة على النظام';
     protected static ?int $sort = 0;
     protected int | string | array $columnSpan = 'full';

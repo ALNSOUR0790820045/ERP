@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderBondWithdrawalResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderBondWithdrawal::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-uturn-left';

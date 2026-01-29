@@ -27,6 +27,10 @@ class Tender extends Model
         'name_en',
         'description',
         
+        // فرصة البيع المباشر
+        'is_direct_sale',
+        'customer_id',
+        
         // التصنيف
         'tender_type',
         'tender_method',
@@ -133,6 +137,9 @@ class Tender extends Model
         'status' => TenderStatus::class,
         'result' => TenderResult::class,
         
+        // فرصة البيع المباشر
+        'is_direct_sale' => 'boolean',
+        
         'publication_date' => 'date',
         'documents_sale_start' => 'date',
         'documents_sale_end' => 'date',
@@ -189,6 +196,12 @@ class Tender extends Model
     {
         return $this->belongsTo(Currency::class);
     }
+    
+    // العميل - للبيع المباشر
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
 
     public function createdBy(): BelongsTo
     {
@@ -203,6 +216,67 @@ class Tender extends Model
     public function decisionBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'decision_by');
+    }
+
+    // === علاقات مراحل العطاء ===
+    
+    // المرحلة 1: الرصد
+    public function discoveries(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderDiscovery::class);
+    }
+    
+    // المرحلة 2: الدراسة
+    public function siteVisits(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderSiteVisit::class);
+    }
+    
+    public function evaluations(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderEvaluation::class);
+    }
+    
+    public function purchaseApprovals(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderPurchaseApproval::class);
+    }
+    
+    // المرحلة 3: إعداد العرض
+    public function proposalClosure(): HasOne
+    {
+        return $this->hasOne(\App\Models\Tenders\TenderProposalClosure::class);
+    }
+    
+    // المرحلة 5-6: الترسية
+    public function awardTracking(): HasOne
+    {
+        return $this->hasOne(\App\Models\Tenders\TenderAwardTracking::class);
+    }
+    
+    public function projectConversion(): HasOne
+    {
+        return $this->hasOne(\App\Models\Tenders\TenderToProjectConversion::class);
+    }
+    
+    public function stageLogs(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderStageLog::class);
+    }
+    
+    public function alerts(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderAlert::class);
+    }
+    
+    public function bondRenewals(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderBondRenewal::class);
+    }
+    
+    public function bondWithdrawals(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderBondWithdrawal::class);
     }
 
     public function documents(): HasMany

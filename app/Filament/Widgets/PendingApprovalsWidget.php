@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 
 class PendingApprovalsWidget extends Widget
 {
+    protected static bool $isLazy = true;
+    
     protected static ?int $sort = 8;
     
     protected int|string|array $columnSpan = 1;

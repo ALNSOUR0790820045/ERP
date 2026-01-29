@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class TenderToProjectConversionResource extends Resource
 {
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = TenderToProjectConversion::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrow-right-circle';
