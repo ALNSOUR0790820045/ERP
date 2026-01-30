@@ -113,6 +113,195 @@ class TenderResource extends Resource
                                             ->searchable()
                                             ->preload(),
                                     ]),
+                                    
+                                // ==========================================
+                                // الحقول الجديدة - حسب وثائق العطاءات الأردنية المعيارية
+                                // ==========================================
+                                
+                                Forms\Components\Section::make('التصنيف والتخصص المطلوب')
+                                    ->description('متطلبات التصنيف حسب نظام المشتريات الحكومية')
+                                    ->columns(4)
+                                    ->collapsible()
+                                    ->collapsed()
+                                    ->schema([
+                                        Forms\Components\Select::make('classification_field')
+                                            ->label('حقل التصنيف')
+                                            ->options([
+                                                'مباني' => 'مباني',
+                                                'طرق' => 'طرق',
+                                                'مياه' => 'مياه وصرف صحي',
+                                                'كهرباء' => 'كهرباء وميكانيك',
+                                                'استشارات' => 'خدمات استشارية',
+                                            ])
+                                            ->searchable(),
+                                        Forms\Components\Select::make('classification_specialty')
+                                            ->label('التخصص')
+                                            ->options([
+                                                'عامة' => 'أعمال عامة',
+                                                'انشائية' => 'أعمال إنشائية',
+                                                'معمارية' => 'أعمال معمارية',
+                                                'ميكانيكية' => 'أعمال ميكانيكية',
+                                                'كهربائية' => 'أعمال كهربائية',
+                                            ])
+                                            ->searchable(),
+                                        Forms\Components\Select::make('classification_category')
+                                            ->label('الفئة')
+                                            ->options([
+                                                'أولى' => 'الفئة الأولى',
+                                                'ثانية' => 'الفئة الثانية',
+                                                'ثالثة' => 'الفئة الثالثة',
+                                                'رابعة' => 'الفئة الرابعة',
+                                                'خامسة' => 'الفئة الخامسة',
+                                            ]),
+                                        Forms\Components\TextInput::make('classification_scope')
+                                            ->label('النطاق المالي')
+                                            ->placeholder('مثال: حتى 500,000 د.أ'),
+                                    ]),
+                            ]),
+                            
+                        // ==========================================
+                        // تبويب المتطلبات الأردنية
+                        // ==========================================
+                        Forms\Components\Tabs\Tab::make('المتطلبات الأردنية')
+                            ->icon('heroicon-o-flag')
+                            ->schema([
+                                Forms\Components\Section::make('فترة الاعتراض')
+                                    ->description('الفترة المتاحة للاعتراض على الإحالة الأولية')
+                                    ->columns(4)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('objection_period_days')
+                                            ->label('مدة فترة الاعتراض (يوم)')
+                                            ->numeric()
+                                            ->default(7)
+                                            ->helperText('المعيار: 7 أيام عمل'),
+                                        Forms\Components\DatePicker::make('objection_period_start')
+                                            ->label('بداية فترة الاعتراض'),
+                                        Forms\Components\DatePicker::make('objection_period_end')
+                                            ->label('نهاية فترة الاعتراض'),
+                                        Forms\Components\TextInput::make('objection_fee')
+                                            ->label('رسم الاعتراض (د.أ)')
+                                            ->numeric()
+                                            ->default(500)
+                                            ->helperText('500 د.أ حسب التعليمات'),
+                                    ]),
+                                    
+                                Forms\Components\Section::make('اجتماع ما قبل تقديم العطاءات')
+                                    ->columns(3)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('pre_bid_meeting_required')
+                                            ->label('اجتماع مطلوب')
+                                            ->live(),
+                                        Forms\Components\DateTimePicker::make('pre_bid_meeting_date')
+                                            ->label('موعد الاجتماع')
+                                            ->visible(fn (Forms\Get $get) => $get('pre_bid_meeting_required')),
+                                        Forms\Components\TextInput::make('pre_bid_meeting_location')
+                                            ->label('مكان الاجتماع')
+                                            ->visible(fn (Forms\Get $get) => $get('pre_bid_meeting_required')),
+                                        Forms\Components\Textarea::make('pre_bid_meeting_minutes')
+                                            ->label('محضر الاجتماع')
+                                            ->rows(4)
+                                            ->columnSpanFull()
+                                            ->visible(fn (Forms\Get $get) => $get('pre_bid_meeting_required')),
+                                    ]),
+                                    
+                                Forms\Components\Section::make('الأفضليات السعرية')
+                                    ->description('حسب قرارات مجلس الوزراء للمشاريع الصغيرة والمتوسطة')
+                                    ->columns(3)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('allows_price_preferences')
+                                            ->label('تسمح بالأفضليات السعرية')
+                                            ->live(),
+                                        Forms\Components\TextInput::make('sme_preference_percentage')
+                                            ->label('نسبة أفضلية SME (%)')
+                                            ->numeric()
+                                            ->default(5)
+                                            ->suffix('%')
+                                            ->visible(fn (Forms\Get $get) => $get('allows_price_preferences')),
+                                        Forms\Components\Toggle::make('local_products_preference')
+                                            ->label('أفضلية للمنتجات المحلية')
+                                            ->visible(fn (Forms\Get $get) => $get('allows_price_preferences')),
+                                    ]),
+                                    
+                                Forms\Components\Section::make('المقاولين الفرعيين')
+                                    ->columns(3)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('allows_subcontracting')
+                                            ->label('يسمح بالتعاقد الفرعي')
+                                            ->live(),
+                                        Forms\Components\TextInput::make('max_subcontracting_percentage')
+                                            ->label('الحد الأقصى للتعاقد الفرعي (%)')
+                                            ->numeric()
+                                            ->default(33)
+                                            ->suffix('%')
+                                            ->helperText('المعيار: 33% كحد أقصى')
+                                            ->visible(fn (Forms\Get $get) => $get('allows_subcontracting')),
+                                        Forms\Components\TextInput::make('local_subcontractor_percentage')
+                                            ->label('الحد الأدنى للمقاولين المحليين (%)')
+                                            ->numeric()
+                                            ->default(10)
+                                            ->suffix('%')
+                                            ->helperText('المعيار: 10% من المحافظة')
+                                            ->visible(fn (Forms\Get $get) => $get('allows_subcontracting')),
+                                    ]),
+                                    
+                                Forms\Components\Section::make('الائتلافات')
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('allows_consortium')
+                                            ->label('يسمح بالائتلافات')
+                                            ->live(),
+                                        Forms\Components\TextInput::make('max_consortium_members')
+                                            ->label('الحد الأقصى لأعضاء الائتلاف')
+                                            ->numeric()
+                                            ->visible(fn (Forms\Get $get) => $get('allows_consortium')),
+                                    ]),
+                                    
+                                Forms\Components\Section::make('الإقرارات المطلوبة')
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('esmp_required')
+                                            ->label('خطة الإدارة البيئية والاجتماعية (ESMP)')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('code_of_conduct_required')
+                                            ->label('قواعد السلوك')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('anti_corruption_declaration_required')
+                                            ->label('إقرار مكافحة الفساد')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('conflict_of_interest_declaration_required')
+                                            ->label('إقرار عدم تضارب المصالح')
+                                            ->default(true),
+                                    ]),
+                                    
+                                Forms\Components\Section::make('معايير التقييم')
+                                    ->columns(3)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('technical_pass_score')
+                                            ->label('درجة النجاح الفني (%)')
+                                            ->numeric()
+                                            ->default(70)
+                                            ->suffix('%'),
+                                        Forms\Components\TextInput::make('technical_weight')
+                                            ->label('وزن التقييم الفني (%)')
+                                            ->numeric()
+                                            ->suffix('%'),
+                                        Forms\Components\TextInput::make('financial_weight')
+                                            ->label('وزن التقييم المالي (%)')
+                                            ->numeric()
+                                            ->suffix('%'),
+                                    ]),
+                                    
+                                Forms\Components\Section::make('التصحيحات الحسابية')
+                                    ->columns(2)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('allow_arithmetic_corrections')
+                                            ->label('السماح بالتصحيحات الحسابية')
+                                            ->default(true),
+                                        Forms\Components\Toggle::make('words_over_numbers_precedence')
+                                            ->label('أولوية الكلمات على الأرقام')
+                                            ->helperText('في حال التعارض، الكلمات تعتمد على الأرقام')
+                                            ->default(true),
+                                    ]),
                             ]),
                             
                         // المالك والاستشاري
@@ -412,6 +601,11 @@ class TenderResource extends Resource
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('manage')
+                        ->label('إدارة')
+                        ->icon('heroicon-o-cog-6-tooth')
+                        ->color('primary')
+                        ->url(fn (Tender $record) => '/admin/tender-workflow?record=' . $record->id),
                     Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make(),
                     Tables\Actions\Action::make('changeStatus')
@@ -426,6 +620,13 @@ class TenderResource extends Resource
                         ->action(function (Tender $record, array $data) {
                             $record->update(['status' => $data['status']]);
                         }),
+                    Tables\Actions\DeleteAction::make()
+                        ->label('حذف')
+                        ->requiresConfirmation()
+                        ->modalHeading('حذف العطاء')
+                        ->modalDescription('هل أنت متأكد من حذف هذا العطاء؟ سيتم حذف جميع البيانات المرتبطة به.')
+                        ->modalSubmitActionLabel('نعم، احذف')
+                        ->modalCancelActionLabel('إلغاء'),
                 ]),
             ])
             ->bulkActions([
@@ -445,6 +646,14 @@ class TenderResource extends Resource
             RelationManagers\BondsRelationManager::class,
             RelationManagers\CompetitorsRelationManager::class,
             RelationManagers\StageLogsRelationManager::class,
+            // ==========================================
+            // العلاقات الجديدة - حسب وثائق العطاءات الأردنية المعيارية
+            // ==========================================
+            RelationManagers\ObjectionsRelationManager::class,
+            RelationManagers\DeclarationsRelationManager::class,
+            RelationManagers\ConsortiumsRelationManager::class,
+            RelationManagers\PricePreferencesRelationManager::class,
+            RelationManagers\ArithmeticCorrectionsRelationManager::class,
         ];
     }
 
@@ -452,9 +661,7 @@ class TenderResource extends Resource
     {
         return [
             'index' => Pages\ListTenders::route('/'),
-            'create' => Pages\CreateTender::route('/create'),
             'view' => Pages\ViewTender::route('/{record}'),
-            'edit' => Pages\EditTender::route('/{record}/edit'),
         ];
     }
     

@@ -15,12 +15,38 @@ class Role extends Model
         'description',
         'is_system',
         'level',
+        'module',
     ];
 
     protected $casts = [
         'is_system' => 'boolean',
         'level' => 'integer',
     ];
+
+    /**
+     * Get available modules for roles
+     */
+    public static function getModules(): array
+    {
+        return [
+            'core' => 'النظام الأساسي',
+            'tenders' => 'العطاءات',
+            'contracts' => 'العقود',
+            'projects' => 'المشاريع',
+            'finance' => 'المالية',
+            'hr' => 'الموارد البشرية',
+            'inventory' => 'المخزون',
+            'procurement' => 'المشتريات',
+        ];
+    }
+
+    /**
+     * Get module label
+     */
+    public function getModuleLabelAttribute(): string
+    {
+        return self::getModules()[$this->module] ?? $this->module ?? 'النظام الأساسي';
+    }
 
     public function permissions(): BelongsToMany
     {

@@ -37,6 +37,94 @@ class Tender extends Model
         'project_type_id',
         'specialization_id',
         
+        // ==========================================
+        // الحقول الجديدة - حسب وثائق العطاءات الأردنية المعيارية
+        // ==========================================
+        
+        // التصنيف والتخصص المطلوب
+        'classification_field',
+        'classification_specialty',
+        'classification_category',
+        'classification_scope',
+        'classification_field_id',
+        'classification_specialty_id',
+        'classification_category_id',
+        
+        // عنوان الجهة المشترية
+        'buyer_country',
+        'buyer_city',
+        'buyer_area',
+        'buyer_street',
+        'buyer_building',
+        'buyer_po_box',
+        
+        // الجهة المستفيدة
+        'beneficiary_id',
+        
+        // عنوان تقديم العروض
+        'submission_country',
+        'submission_city',
+        'submission_area',
+        'submission_street',
+        'submission_building',
+        'submission_notes',
+        
+        // رابط خرائط جوجل
+        'google_maps_link',
+        
+        // هل المناقصة بالإنجليزية
+        'is_english_tender',
+        
+        // فترة الاعتراض
+        'objection_period_days',
+        'objection_period_start',
+        'objection_period_end',
+        'objection_fee',
+        
+        // اجتماع ما قبل تقديم العطاءات
+        'pre_bid_meeting_required',
+        'pre_bid_meeting_date',
+        'pre_bid_meeting_location',
+        'pre_bid_meeting_minutes',
+        
+        // الأفضليات السعرية
+        'allows_price_preferences',
+        'sme_preference_percentage',
+        'local_products_preference',
+        
+        // المقاولين الفرعيين
+        'allows_subcontracting',
+        'max_subcontracting_percentage',
+        'local_subcontractor_percentage',
+        
+        // الائتلافات
+        'allows_consortium',
+        'max_consortium_members',
+        
+        // متطلبات إضافية
+        'esmp_required',
+        'code_of_conduct_required',
+        'anti_corruption_declaration_required',
+        'conflict_of_interest_declaration_required',
+        
+        // معايير الفحص الجوهري
+        'technical_pass_score',
+        'financial_weight',
+        'technical_weight',
+        
+        // تصحيحات حسابية
+        'allow_arithmetic_corrections',
+        'words_over_numbers_precedence',
+        
+        // العملة وبيانات إضافية
+        'currency_for_bid_evaluation',
+        'exchange_rate_date',
+        'incoterms',
+        
+        // ==========================================
+        // الحقول الأصلية
+        // ==========================================
+        
         // الجهة المالكة
         'owner_type',
         'owner_id',
@@ -126,6 +214,46 @@ class Tender extends Model
         // التدقيق
         'created_by',
         'updated_by',
+        
+        // ==========================================
+        // الحقول الجديدة المضافة
+        // ==========================================
+        
+        // تجزئة المناقصة (الحزم)
+        'is_package_tender',
+        'package_count',
+        'award_basis',
+        
+        // الموقع الإلكتروني للجهة المشترية
+        'owner_website',
+        
+        // مصدر التمويل
+        'funding_source',
+        'funder_name',
+        
+        // الاستيضاحات
+        'clarification_address',
+        
+        // التقديم الإلكتروني
+        'electronic_submission',
+        'submission_district',
+        'submission_box_number',
+        
+        // تأمين الدخول
+        'bid_bond_calculation',
+        'bid_bond_validity_days',
+        
+        // ملاحظات إضافية
+        'additional_notes',
+        
+        // نطاق المناقصة
+        'tender_scope',
+        
+        // المستندات المطلوبة (JSON)
+        'required_documents',
+        
+        // الحي
+        'project_district',
     ];
 
     protected $casts = [
@@ -139,6 +267,57 @@ class Tender extends Model
         
         // فرصة البيع المباشر
         'is_direct_sale' => 'boolean',
+        'is_english_tender' => 'boolean',
+        
+        // ==========================================
+        // الحقول الجديدة - حسب وثائق العطاءات الأردنية المعيارية
+        // ==========================================
+        
+        // فترة الاعتراض
+        'objection_period_start' => 'date',
+        'objection_period_end' => 'date',
+        'objection_fee' => 'decimal:2',
+        'objection_period_days' => 'integer',
+        
+        // اجتماع ما قبل تقديم العطاءات
+        'pre_bid_meeting_required' => 'boolean',
+        'pre_bid_meeting_date' => 'datetime',
+        
+        // الأفضليات السعرية
+        'allows_price_preferences' => 'boolean',
+        'sme_preference_percentage' => 'decimal:2',
+        'local_products_preference' => 'boolean',
+        
+        // المقاولين الفرعيين
+        'allows_subcontracting' => 'boolean',
+        'max_subcontracting_percentage' => 'decimal:2',
+        'local_subcontractor_percentage' => 'decimal:2',
+        
+        // الائتلافات
+        'allows_consortium' => 'boolean',
+        'max_consortium_members' => 'integer',
+        
+        // المتطلبات
+        'esmp_required' => 'boolean',
+        'code_of_conduct_required' => 'boolean',
+        'anti_corruption_declaration_required' => 'boolean',
+        'conflict_of_interest_declaration_required' => 'boolean',
+        
+        // معايير التقييم
+        'technical_pass_score' => 'decimal:2',
+        'financial_weight' => 'decimal:2',
+        'technical_weight' => 'decimal:2',
+        
+        // التصحيحات الحسابية
+        'allow_arithmetic_corrections' => 'boolean',
+        'words_over_numbers_precedence' => 'boolean',
+        
+        // العملة
+        'exchange_rate_date' => 'date',
+        
+        // ==========================================
+        // الحقول الأصلية
+        // ==========================================
         
         'publication_date' => 'date',
         'documents_sale_start' => 'date',
@@ -169,6 +348,20 @@ class Tender extends Model
         'winning_price' => 'decimal:3',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        
+        // ==========================================
+        // الحقول الجديدة المضافة
+        // ==========================================
+        
+        // تجزئة المناقصة (الحزم)
+        'is_package_tender' => 'boolean',
+        'package_count' => 'integer',
+        
+        // تأمين الدخول
+        'bid_bond_validity_days' => 'integer',
+        
+        // المستندات المطلوبة (JSON)
+        'required_documents' => 'array',
     ];
 
     // العلاقات
@@ -201,6 +394,30 @@ class Tender extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+    
+    // الجهة المستفيدة
+    public function beneficiary(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'beneficiary_id');
+    }
+    
+    // مجال التصنيف
+    public function classificationField(): BelongsTo
+    {
+        return $this->belongsTo(ClassificationField::class);
+    }
+    
+    // اختصاص التصنيف
+    public function classificationSpecialty(): BelongsTo
+    {
+        return $this->belongsTo(ClassificationSpecialty::class);
+    }
+    
+    // فئة التصنيف
+    public function classificationCategory(): BelongsTo
+    {
+        return $this->belongsTo(ClassificationCategory::class);
     }
 
     public function createdBy(): BelongsTo
@@ -405,6 +622,58 @@ class Tender extends Model
         return $this->hasMany(TenderCompetitor::class);
     }
 
+    // ==========================================
+    // العلاقات الإضافية - حسب وثائق العطاءات الأردنية المعيارية
+    // ==========================================
+
+    /**
+     * الائتلافات
+     */
+    public function consortiums(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderConsortium::class);
+    }
+
+    /**
+     * الإقرارات والتعهدات
+     */
+    public function declarations(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderDeclaration::class);
+    }
+
+    /**
+     * الاعتراضات
+     */
+    public function objections(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderObjection::class);
+    }
+
+    /**
+     * الأفضليات السعرية
+     */
+    public function pricePreferences(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderPricePreference::class);
+    }
+
+    /**
+     * المقاولين الفرعيين المقترحين
+     */
+    public function proposedSubcontractors(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderProposedSubcontractor::class);
+    }
+
+    /**
+     * تصحيحات الأخطاء الحسابية
+     */
+    public function arithmeticCorrections(): HasMany
+    {
+        return $this->hasMany(\App\Models\Tenders\TenderArithmeticCorrection::class);
+    }
+
     // Accessors
     public function getNameAttribute(): string
     {
@@ -524,16 +793,29 @@ class Tender extends Model
 
         static::updating(function (Tender $tender) {
             $tender->updated_by = auth()->id();
-            
+        });
+
+        // Use updated event for logging to avoid issues
+        static::updated(function (Tender $tender) {
             // Log status changes
-            if ($tender->isDirty('status')) {
-                $tender->logActivity(
-                    'status_change',
-                    'تغيير الحالة',
-                    null,
-                    $tender->getOriginal('status')?->value,
-                    $tender->status->value
-                );
+            if ($tender->wasChanged('status')) {
+                try {
+                    $oldStatus = $tender->getOriginal('status');
+                    $oldStatusValue = $oldStatus instanceof \BackedEnum ? $oldStatus->value : ($oldStatus ?? 'غير محدد');
+                    $newStatusValue = $tender->status instanceof \BackedEnum ? $tender->status->value : $tender->status;
+                    
+                    $tender->activities()->create([
+                        'activity_type' => 'status_change',
+                        'title' => 'تغيير الحالة',
+                        'description' => 'تم تغيير حالة العطاء من ' . $oldStatusValue . ' إلى ' . $newStatusValue,
+                        'old_value' => $oldStatusValue,
+                        'new_value' => $newStatusValue,
+                        'user_id' => auth()->id(),
+                    ]);
+                } catch (\Exception $e) {
+                    // Silently fail if activity logging fails
+                    \Log::warning('Failed to log tender activity: ' . $e->getMessage());
+                }
             }
         });
     }
