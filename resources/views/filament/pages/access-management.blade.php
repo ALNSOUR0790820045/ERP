@@ -93,6 +93,20 @@
         </div>
     </div>
 
+    {{-- روابط سريعة --}}
+    <div class="mb-6 flex flex-wrap gap-3">
+        <a href="{{ route('filament.admin.pages.stage-permission-manager') }}" 
+           class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg shadow hover:shadow-lg transition-all">
+            <x-heroicon-o-adjustments-horizontal class="w-5 h-5" />
+            <span>صلاحيات المراحل الذكية</span>
+        </a>
+        <a href="{{ route('filament.admin.pages.workflow-designer') }}" 
+           class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg shadow hover:shadow-lg transition-all">
+            <x-heroicon-o-cog-6-tooth class="w-5 h-5" />
+            <span>مصمم سير العمل</span>
+        </a>
+    </div>
+
     {{-- التبويبات --}}
     <div class="mb-4 border-b border-gray-200 dark:border-gray-700">
         <nav class="flex gap-4" aria-label="Tabs">

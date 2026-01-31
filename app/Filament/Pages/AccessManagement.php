@@ -2,10 +2,18 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Branch;
+use App\Models\Module;
+use App\Models\ModuleStage;
 use App\Models\Permission;
+use App\Models\PermissionTemplate;
+use App\Models\PermissionType;
 use App\Models\Role;
+use App\Models\SystemModule;
+use App\Models\SystemScreen;
 use App\Models\Team;
 use App\Models\User;
+use App\Models\UserStagePermission;
 use App\Models\WorkflowDefinition;
 use Filament\Pages\Page;
 use Filament\Tables;
@@ -20,6 +28,7 @@ use Filament\Infolists\Contracts\HasInfolists;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Url;
 
 class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
@@ -32,7 +41,8 @@ class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
     protected static ?string $navigationLabel = 'إدارة الصلاحيات والوصول';
     protected static ?string $title = 'إدارة الصلاحيات والوصول';
     protected static ?string $navigationGroup = 'إعدادات النظام';
-    protected static ?int $navigationSort = 0;
+    protected static ?int $navigationSort = 1;
+    protected static bool $shouldRegisterNavigation = false; // إخفاء من القائمة - استخدم UnifiedAccessControl
     protected static string $view = 'filament.pages.access-management';
 
     #[Url]
@@ -125,6 +135,33 @@ class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
                     ->label('تعديل')
                     ->icon('heroicon-o-pencil')
                     ->url(fn ($record) => route('filament.admin.resources.users.edit', $record)),
+                Tables\Actions\Action::make('manage_stage_permissions')
+                    ->label('صلاحيات المراحل')
+                    ->icon('heroicon-o-adjustments-horizontal')
+                    ->color('purple')
+                    ->url(fn ($record) => route('filament.admin.pages.stage-permission-manager') . '?user=' . $record->id),
+                Tables\Actions\Action::make('apply_template')
+                    ->label('تطبيق قالب')
+                    ->icon('heroicon-o-document-duplicate')
+                    ->color('success')
+                    ->form([
+                        Forms\Components\Select::make('template_id')
+                            ->label('اختر القالب')
+                            ->options(PermissionTemplate::where('is_active', true)->pluck('name_ar', 'id'))
+                            ->required()
+                            ->helperText('سيتم إضافة صلاحيات القالب للمستخدم'),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $template = PermissionTemplate::find($data['template_id']);
+                        if ($template) {
+                            $template->applyToUser($record->id, auth()->id());
+                            Notification::make()
+                                ->success()
+                                ->title('تم تطبيق القالب')
+                                ->body("تم تطبيق قالب {$template->name_ar} على {$record->name}")
+                                ->send();
+                        }
+                    }),
                 Tables\Actions\Action::make('assign_role')
                     ->label('تغيير الدور')
                     ->icon('heroicon-o-shield-check')
@@ -168,6 +205,18 @@ class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
                             ->success()
                             ->send();
                     }),
+                Tables\Actions\Action::make('toggle_active')
+                    ->label(fn ($record) => $record->is_active ? 'تعطيل' : 'تفعيل')
+                    ->icon(fn ($record) => $record->is_active ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle')
+                    ->color(fn ($record) => $record->is_active ? 'danger' : 'success')
+                    ->requiresConfirmation()
+                    ->action(function ($record) {
+                        $record->update(['is_active' => !$record->is_active]);
+                        Notification::make()
+                            ->success()
+                            ->title($record->is_active ? 'تم تفعيل المستخدم' : 'تم تعطيل المستخدم')
+                            ->send();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkAction::make('bulk_assign_role')
@@ -192,30 +241,24 @@ class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
     protected function getRolesTable(Table $table): Table
     {
         return $table
-            ->query(Role::query()->withCount(['permissions', 'users']))
+            ->query(Role::query()->withCount(['users']))
             ->columns([
-                Tables\Columns\TextColumn::make('module')
-                    ->label('الوحدة')
-                    ->badge()
-                    ->formatStateUsing(fn ($state) => Role::getModules()[$state] ?? 'النظام الأساسي')
-                    ->color(fn ($state) => match($state) {
-                        'tenders' => 'success',
-                        'contracts' => 'warning',
-                        'projects' => 'info',
-                        'finance' => 'danger',
-                        'hr' => 'purple',
-                        'inventory' => 'orange',
-                        'procurement' => 'cyan',
-                        default => 'gray',
-                    }),
                 Tables\Columns\TextColumn::make('name_ar')
-                    ->label('الاسم')
+                    ->label('المسمى الوظيفي')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold'),
                 Tables\Columns\TextColumn::make('code')
                     ->label('الرمز')
                     ->badge()
                     ->color('gray'),
+                Tables\Columns\TextColumn::make('systemModules.name_ar')
+                    ->label('الوحدات')
+                    ->badge()
+                    ->color('success')
+                    ->separator(', ')
+                    ->limitList(3)
+                    ->expandableLimitedList(),
                 Tables\Columns\TextColumn::make('level')
                     ->label('المستوى')
                     ->badge()
@@ -225,10 +268,6 @@ class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
                         $state >= 50 => 'info',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('permissions_count')
-                    ->label('الصلاحيات')
-                    ->badge()
-                    ->color('success'),
                 Tables\Columns\TextColumn::make('users_count')
                     ->label('المستخدمين')
                     ->badge()
@@ -238,18 +277,9 @@ class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
                     ->boolean(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('module')
-                    ->label('الوحدة')
-                    ->options(Role::getModules()),
                 Tables\Filters\TernaryFilter::make('is_system')
                     ->label('دور نظام'),
             ])
-            ->groups([
-                Tables\Grouping\Group::make('module')
-                    ->label('الوحدة')
-                    ->getTitleFromRecordUsing(fn ($record) => Role::getModules()[$record->module] ?? 'النظام الأساسي'),
-            ])
-            ->defaultGroup('module')
             ->actions([
                 Tables\Actions\Action::make('view')
                     ->label('عرض')
@@ -259,24 +289,6 @@ class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
                     ->label('تعديل')
                     ->icon('heroicon-o-pencil')
                     ->url(fn ($record) => route('filament.admin.resources.roles.edit', $record)),
-                Tables\Actions\Action::make('manage_permissions')
-                    ->label('إدارة الصلاحيات')
-                    ->icon('heroicon-o-key')
-                    ->color('warning')
-                    ->form([
-                        Forms\Components\CheckboxList::make('permissions')
-                            ->label('الصلاحيات')
-                            ->options(Permission::pluck('name_ar', 'id'))
-                            ->columns(3)
-                            ->default(fn ($record) => $record->permissions->pluck('id')->toArray()),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $record->permissions()->sync($data['permissions']);
-                        Notification::make()
-                            ->title('تم تحديث الصلاحيات بنجاح')
-                            ->success()
-                            ->send();
-                    }),
             ]);
     }
 
@@ -448,7 +460,172 @@ class AccessManagement extends Page implements HasTable, HasForms, HasInfolists
                 ->label('مستخدم جديد')
                 ->icon('heroicon-o-user-plus')
                 ->color('success')
-                ->url(route('filament.admin.resources.users.create'))
+                ->modalWidth('4xl')
+                ->modalHeading('إضافة مستخدم جديد')
+                ->modalDescription('أدخل بيانات المستخدم واختر صلاحياته')
+                ->form([
+                    Forms\Components\Wizard::make([
+                        Forms\Components\Wizard\Step::make('البيانات الأساسية')
+                            ->icon('heroicon-o-user')
+                            ->schema([
+                                Forms\Components\Grid::make(2)->schema([
+                                    Forms\Components\TextInput::make('name')
+                                        ->label('الاسم الكامل')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('email')
+                                        ->label('البريد الإلكتروني')
+                                        ->email()
+                                        ->required()
+                                        ->unique(User::class, 'email')
+                                        ->maxLength(255),
+                                    Forms\Components\TextInput::make('phone')
+                                        ->label('رقم الهاتف')
+                                        ->tel()
+                                        ->maxLength(20),
+                                    Forms\Components\TextInput::make('password')
+                                        ->label('كلمة المرور')
+                                        ->password()
+                                        ->required()
+                                        ->minLength(8)
+                                        ->revealable(),
+                                ]),
+                            ]),
+                        Forms\Components\Wizard\Step::make('الدور والفرع')
+                            ->icon('heroicon-o-building-office')
+                            ->schema([
+                                Forms\Components\Grid::make(2)->schema([
+                                    Forms\Components\Select::make('role_id')
+                                        ->label('الدور الوظيفي')
+                                        ->options(Role::orderBy('name_ar')->pluck('name_ar', 'id'))
+                                        ->required()
+                                        ->searchable()
+                                        ->preload()
+                                        ->live()
+                                        ->helperText('اختر الدور الذي يحدد صلاحيات المستخدم الأساسية'),
+                                    Forms\Components\Select::make('branch_id')
+                                        ->label('الفرع')
+                                        ->options(Branch::orderBy('name_ar')->pluck('name_ar', 'id'))
+                                        ->searchable()
+                                        ->preload(),
+                                    Forms\Components\Toggle::make('is_active')
+                                        ->label('نشط')
+                                        ->default(true)
+                                        ->helperText('المستخدم النشط يمكنه تسجيل الدخول'),
+                                    Forms\Components\Toggle::make('must_change_password')
+                                        ->label('يجب تغيير كلمة المرور')
+                                        ->default(true)
+                                        ->helperText('سيُطلب من المستخدم تغيير كلمة المرور عند أول تسجيل دخول'),
+                                ]),
+                            ]),
+                        Forms\Components\Wizard\Step::make('صلاحيات المراحل')
+                            ->icon('heroicon-o-shield-check')
+                            ->schema([
+                                Forms\Components\Placeholder::make('permissions_info')
+                                    ->content('يمكنك منح صلاحيات إضافية على مراحل محددة (اختياري)'),
+                                Forms\Components\Select::make('permission_template_id')
+                                    ->label('تطبيق قالب صلاحيات سريع')
+                                    ->options(PermissionTemplate::where('is_active', true)->pluck('name_ar', 'id'))
+                                    ->placeholder('اختر قالب (اختياري)')
+                                    ->helperText('القوالب توفر صلاحيات جاهزة مثل: سكرتير عطاءات، مدير عطاءات')
+                                    ->live(),
+                                Forms\Components\Select::make('team_id')
+                                    ->label('إضافة لفريق عمل')
+                                    ->options(Team::where('is_active', true)->pluck('name_ar', 'id'))
+                                    ->placeholder('اختر فريق (اختياري)')
+                                    ->helperText('يمكنك إضافة المستخدم لفريق عمل'),
+                            ]),
+                    ])->skippable(),
+                ])
+                ->action(function (array $data): void {
+                    DB::beginTransaction();
+                    try {
+                        // إنشاء المستخدم
+                        $user = User::create([
+                            'name' => $data['name'],
+                            'email' => $data['email'],
+                            'phone' => $data['phone'] ?? null,
+                            'password' => Hash::make($data['password']),
+                            'role_id' => $data['role_id'],
+                            'branch_id' => $data['branch_id'] ?? null,
+                            'is_active' => $data['is_active'] ?? true,
+                            'must_change_password' => $data['must_change_password'] ?? true,
+                        ]);
+
+                        // تطبيق قالب الصلاحيات إن وجد
+                        if (!empty($data['permission_template_id'])) {
+                            $template = PermissionTemplate::find($data['permission_template_id']);
+                            if ($template) {
+                                $template->applyToUser($user->id, auth()->id());
+                            }
+                        }
+
+                        // إضافة للفريق إن وجد
+                        if (!empty($data['team_id'])) {
+                            $team = Team::find($data['team_id']);
+                            if ($team) {
+                                $team->addMember($user, 'member');
+                            }
+                        }
+
+                        DB::commit();
+
+                        Notification::make()
+                            ->success()
+                            ->title('تم إنشاء المستخدم بنجاح')
+                            ->body("تم إنشاء حساب {$user->name} وتعيين صلاحياته")
+                            ->send();
+
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+                        Notification::make()
+                            ->danger()
+                            ->title('خطأ في إنشاء المستخدم')
+                            ->body($e->getMessage())
+                            ->send();
+                    }
+                })
+                ->visible(fn () => $this->activeTab === 'users'),
+
+            Action::make('quick_add_user')
+                ->label('إضافة سريعة')
+                ->icon('heroicon-o-bolt')
+                ->color('gray')
+                ->modalWidth('lg')
+                ->modalHeading('إضافة مستخدم سريعة')
+                ->form([
+                    Forms\Components\TextInput::make('name')
+                        ->label('الاسم')
+                        ->required(),
+                    Forms\Components\TextInput::make('email')
+                        ->label('البريد')
+                        ->email()
+                        ->required()
+                        ->unique(User::class, 'email'),
+                    Forms\Components\Select::make('role_id')
+                        ->label('الدور')
+                        ->options(Role::orderBy('name_ar')->pluck('name_ar', 'id'))
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $defaultPassword = 'password123';
+                    
+                    User::create([
+                        'name' => $data['name'],
+                        'email' => $data['email'],
+                        'password' => Hash::make($defaultPassword),
+                        'role_id' => $data['role_id'],
+                        'is_active' => true,
+                        'must_change_password' => true,
+                    ]);
+
+                    Notification::make()
+                        ->success()
+                        ->title('تم إنشاء المستخدم')
+                        ->body("كلمة المرور الافتراضية: {$defaultPassword}")
+                        ->persistent()
+                        ->send();
+                })
                 ->visible(fn () => $this->activeTab === 'users'),
 
             Action::make('create_role')

@@ -161,7 +161,7 @@ class TenderConsortium extends Model
     /**
      * رفض الائتلاف
      */
-    public function reject(string $reason = null): void
+    public function reject(?string $reason = null): void
     {
         $this->update([
             'status' => 'rejected',

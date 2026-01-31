@@ -17,11 +17,14 @@ class TeamResource extends Resource
     protected static ?string $model = Team::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
-    protected static ?string $navigationGroup = 'إعدادات النظام';
+    protected static ?string $navigationGroup = 'إدارة الصلاحيات والوصول';
     protected static ?string $navigationLabel = 'فرق العمل';
     protected static ?string $modelLabel = 'فريق';
     protected static ?string $pluralModelLabel = 'فرق العمل';
     protected static ?int $navigationSort = 3;
+    
+    // إخفاء من القائمة - الوصول عبر صفحة إدارة الوصول
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function form(Form $form): Form
     {

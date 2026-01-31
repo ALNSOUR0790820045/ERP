@@ -229,7 +229,7 @@ class TenderPricePreference extends Model
     /**
      * إلغاء الأفضلية
      */
-    public function revoke(string $reason = null): void
+    public function revoke(?string $reason = null): void
     {
         $this->update([
             'is_verified' => false,

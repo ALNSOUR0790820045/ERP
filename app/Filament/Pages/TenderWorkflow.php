@@ -35,6 +35,8 @@ class TenderWorkflow extends Page implements HasForms
     protected static ?string $title = 'رصد عطاء جديد';
     
     protected static ?int $navigationSort = 0;
+    
+    protected static bool $shouldRegisterNavigation = false;
 
     /**
      * التحقق من صلاحية الوصول للصفحة
@@ -107,12 +109,14 @@ class TenderWorkflow extends Page implements HasForms
         foreach ($allTenders as $tender) {
             $matchReasons = [];
             $matchScore = 0;
+            $isExactDuplicate = false;
             
             // مطابقة رقم المناقصة (بعد التنظيف)
             $tenderRefNumber = $this->normalizeText($tender->reference_number);
             if ($inputRefNumber && $tenderRefNumber && $inputRefNumber === $tenderRefNumber) {
-                $matchReasons[] = 'رقم المناقصة متطابق';
+                $matchReasons[] = '⛔ رقم المناقصة متطابق تماماً';
                 $matchScore += 50;
+                $isExactDuplicate = true; // رقم متطابق = تكرار مؤكد
             } elseif ($inputRefNumber && $tenderRefNumber && similar_text($inputRefNumber, $tenderRefNumber) / max(strlen($inputRefNumber), strlen($tenderRefNumber)) > 0.8) {
                 $matchReasons[] = 'رقم المناقصة مشابه جداً';
                 $matchScore += 30;
@@ -137,10 +141,17 @@ class TenderWorkflow extends Page implements HasForms
             // مطابقة اسم المناقصة
             $tenderName = $this->normalizeText($tender->name_ar ?? $tender->name_en);
             if ($inputName && $tenderName) {
-                $similarity = similar_text($inputName, $tenderName, $percent);
-                if ($percent > 70) {
-                    $matchReasons[] = 'اسم المناقصة مشابه (' . round($percent) . '%)';
-                    $matchScore += 20;
+                // التطابق التام فقط إذا كان الاسم متطابقاً 100%
+                if ($inputName === $tenderName) {
+                    $matchReasons[] = '⛔ اسم المناقصة متطابق تماماً';
+                    $matchScore += 40;
+                    $isExactDuplicate = true;
+                } else {
+                    $similarity = similar_text($inputName, $tenderName, $percent);
+                    if ($percent > 80) {
+                        $matchReasons[] = 'اسم المناقصة مشابه (' . round($percent) . '%)';
+                        $matchScore += 20;
+                    }
                 }
             }
             
@@ -155,6 +166,7 @@ class TenderWorkflow extends Page implements HasForms
                     'status' => $tender->status?->getLabel() ?? $tender->status,
                     'match_reasons' => $matchReasons,
                     'match_score' => $matchScore,
+                    'is_exact_duplicate' => $isExactDuplicate,
                 ];
             }
         }
@@ -163,6 +175,19 @@ class TenderWorkflow extends Page implements HasForms
         usort($similar, fn($a, $b) => $b['match_score'] <=> $a['match_score']);
         
         return $similar;
+    }
+    
+    /**
+     * التحقق من وجود تكرار مطابق تماماً
+     */
+    protected function hasExactDuplicate(array $similarTenders): bool
+    {
+        foreach ($similarTenders as $tender) {
+            if ($tender['is_exact_duplicate'] ?? false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public function mount(): void
@@ -240,12 +265,12 @@ class TenderWorkflow extends Page implements HasForms
                                         ->required(),
                                     Forms\Components\Toggle::make('is_english_tender')
                                         ->label('باللغة الإنجليزية')
-                                        ->live()
+                                        ->live(onBlur: true)
                                         ->default(false),
                                     Forms\Components\Toggle::make('is_direct_sale')
                                         ->label('بيع مباشر')
                                         ->helperText('بدون وثائق وكفالات')
-                                        ->live()
+                                        ->live(onBlur: true)
                                         ->default(false),
                                     Forms\Components\Select::make('tender_scope')
                                         ->label('نطاق المناقصة')
@@ -325,7 +350,7 @@ class TenderWorkflow extends Page implements HasForms
                                         ->label('تاريخ النشر')
                                         ->required()
                                         ->default(now())
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\DatePicker::make('documents_sale_start')
                                         ->label('بداية بيع الوثائق')
                                         ->hidden(fn (Forms\Get $get) => $get('is_direct_sale'))
@@ -345,8 +370,19 @@ class TenderWorkflow extends Page implements HasForms
                                     Forms\Components\DateTimePicker::make('submission_deadline')
                                         ->label('⚠️ آخر موعد للتقديم')
                                         ->required()
-                                        ->live()
-                                        ->minDate(fn (Forms\Get $get) => $get('documents_sale_end') ?: now()),
+                                        ->live(onBlur: true)
+                                        ->minDate(fn (Forms\Get $get) => $get('publication_date') ? \Carbon\Carbon::parse($get('publication_date'))->addDay() : now()->addDay())
+                                        ->rule(function (Forms\Get $get) {
+                                            return function (string $attribute, $value, \Closure $fail) use ($get) {
+                                                if ($value && $get('publication_date')) {
+                                                    $pubDate = \Carbon\Carbon::parse($get('publication_date'));
+                                                    $subDate = \Carbon\Carbon::parse($value);
+                                                    if ($subDate->lte($pubDate)) {
+                                                        $fail('تاريخ التقديم يجب أن يكون بعد تاريخ النشر');
+                                                    }
+                                                }
+                                            };
+                                        }),
                                     Forms\Components\DateTimePicker::make('opening_date')
                                         ->label('موعد فتح العروض')
                                         ->hidden(fn (Forms\Get $get) => $get('is_direct_sale'))
@@ -428,7 +464,7 @@ class TenderWorkflow extends Page implements HasForms
                                             'fixed' => 'مبلغ ثابت',
                                             'percentage' => 'نسبة مئوية',
                                         ])
-                                        ->live()
+                                        ->live(onBlur: true)
                                         ->default('fixed'),
                                     Forms\Components\TextInput::make('bid_bond_amount')
                                         ->label('قيمة التأمين')
@@ -495,7 +531,7 @@ class TenderWorkflow extends Page implements HasForms
                                             'فلسطين' => 'فلسطين',
                                         ])
                                         ->default('الأردن')
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\Select::make('city')
                                         ->label('المحافظة')
                                         ->options(fn (Forms\Get $get) => match($get('country')) {
@@ -547,7 +583,7 @@ class TenderWorkflow extends Page implements HasForms
                                 ->schema([
                                     Forms\Components\Toggle::make('is_package_tender')
                                         ->label('مناقصة مجزأة')
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\TextInput::make('package_count')
                                         ->label('عدد الحزم')
                                         ->numeric()
@@ -576,7 +612,7 @@ class TenderWorkflow extends Page implements HasForms
                                             'grant' => 'منحة',
                                         ])
                                         ->default('government_budget')
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\TextInput::make('funder_name')
                                         ->label('اسم الممول')
                                         ->visible(fn (Forms\Get $get) => $get('funding_source') !== 'government_budget')
@@ -625,7 +661,7 @@ class TenderWorkflow extends Page implements HasForms
                                             'go' => '✅ Go - المشاركة',
                                             'no_go' => '❌ No-Go - عدم المشاركة',
                                         ])
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\DatePicker::make('decision_date')
                                         ->label('تاريخ القرار'),
                                     Forms\Components\Textarea::make('decision_notes')
@@ -750,7 +786,7 @@ class TenderWorkflow extends Page implements HasForms
                                 ->schema([
                                     Forms\Components\Toggle::make('pre_bid_meeting_required')
                                         ->label('اجتماع مطلوب')
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\DateTimePicker::make('pre_bid_meeting_date')
                                         ->label('موعد الاجتماع')
                                         ->visible(fn (Forms\Get $get) => $get('pre_bid_meeting_required')),
@@ -769,7 +805,7 @@ class TenderWorkflow extends Page implements HasForms
                                 ->schema([
                                     Forms\Components\Toggle::make('allows_price_preferences')
                                         ->label('تسمح بالأفضليات السعرية')
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\TextInput::make('sme_preference_percentage')
                                         ->label('نسبة أفضلية SME (%)')
                                         ->numeric()
@@ -786,7 +822,7 @@ class TenderWorkflow extends Page implements HasForms
                                 ->schema([
                                     Forms\Components\Toggle::make('allows_subcontracting')
                                         ->label('يسمح بالتعاقد الفرعي')
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\TextInput::make('max_subcontracting_percentage')
                                         ->label('الحد الأقصى للتعاقد الفرعي (%)')
                                         ->numeric()
@@ -806,7 +842,7 @@ class TenderWorkflow extends Page implements HasForms
                                 ->schema([
                                     Forms\Components\Toggle::make('allows_consortium')
                                         ->label('يسمح بالائتلافات')
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\TextInput::make('max_consortium_members')
                                         ->label('الحد الأقصى لأعضاء الائتلاف')
                                         ->numeric()
@@ -878,7 +914,7 @@ class TenderWorkflow extends Page implements HasForms
                                     Forms\Components\Select::make('result')
                                         ->label('النتيجة')
                                         ->options(TenderResult::class)
-                                        ->live(),
+                                        ->live(onBlur: true),
                                     Forms\Components\DatePicker::make('award_date')
                                         ->label('تاريخ الترسية'),
                                     Forms\Components\TextInput::make('winner_name')
@@ -913,8 +949,9 @@ class TenderWorkflow extends Page implements HasForms
     {
         $data = $this->form->getState();
         
-        // فحص التكرار فقط للعطاءات الجديدة أو إذا لم يتم التأكيد
-        if (!$this->duplicateCheckConfirmed && !($this->record && $this->record->exists)) {
+        // فحص التكرار فقط للعطاءات الجديدة
+        if (!($this->record && $this->record->exists)) {
+            // دائماً نفحص البيانات الجديدة
             $this->similarTenders = $this->findSimilarTenders($data);
             
             if (!empty($this->similarTenders)) {
@@ -928,6 +965,7 @@ class TenderWorkflow extends Page implements HasForms
     
     public function confirmSaveAnyway(): void
     {
+        // المستخدم أكد أنه يريد الحفظ على أي حال
         $this->duplicateCheckConfirmed = true;
         $this->showDuplicateWarning = false;
         $data = $this->form->getState();
@@ -938,34 +976,54 @@ class TenderWorkflow extends Page implements HasForms
     {
         $this->showDuplicateWarning = false;
         $this->similarTenders = [];
+        $this->duplicateCheckConfirmed = false; // إعادة تعيين لفحص البيانات الجديدة
     }
     
     protected function performSave(array $data): void
     {
-        $data['status'] = TenderStatus::NEW; // حفظ كمسودة
-        
-        if ($this->record && $this->record->exists) {
-            $this->record->update($data);
-            $message = 'تم حفظ المسودة بنجاح';
-        } else {
-            $this->record = Tender::create($data);
-            $message = 'تم حفظ المسودة بنجاح';
-        }
-        
-        $this->form->model($this->record)->fill($this->record->toArray());
-        
-        // إعادة تعيين متغيرات التكرار
-        $this->duplicateCheckConfirmed = false;
-        $this->similarTenders = [];
-        
-        Notification::make()
-            ->title($message)
-            ->icon('heroicon-o-document')
-            ->success()
-            ->send();
+        try {
+            // التأكد من القيم الافتراضية
+            $data['status'] = TenderStatus::NEW;
+            $data['tender_scope'] = $data['tender_scope'] ?? 'local';
+            $data['is_direct_sale'] = $data['is_direct_sale'] ?? false;
+            $data['is_english_tender'] = $data['is_english_tender'] ?? false;
+            $data['is_package_tender'] = $data['is_package_tender'] ?? false;
             
-        // Redirect to same page with record
-        $this->redirect(static::getUrl() . '?record=' . $this->record->id);
+            if ($this->record && $this->record->exists) {
+                $this->record->update($data);
+                $message = 'تم حفظ المسودة بنجاح';
+            } else {
+                $this->record = Tender::create($data);
+                $message = 'تم حفظ المسودة بنجاح';
+            }
+            
+            $this->form->model($this->record)->fill($this->record->toArray());
+            
+            // إعادة تعيين متغيرات التكرار
+            $this->duplicateCheckConfirmed = false;
+            $this->similarTenders = [];
+            
+            Notification::make()
+                ->title($message)
+                ->icon('heroicon-o-document')
+                ->success()
+                ->send();
+                
+            // Redirect to same page with record
+            $this->redirect(static::getUrl() . '?record=' . $this->record->id);
+            
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('حدث خطأ أثناء الحفظ')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+                
+            \Log::error('Tender save error: ' . $e->getMessage(), [
+                'data' => $data,
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 
     public function sendForStudy(): void
@@ -973,7 +1031,8 @@ class TenderWorkflow extends Page implements HasForms
         $data = $this->form->getState();
         
         // فحص التكرار فقط للعطاءات الجديدة
-        if (!$this->duplicateCheckConfirmed && !($this->record && $this->record->exists)) {
+        if (!($this->record && $this->record->exists)) {
+            // دائماً نفحص البيانات الجديدة
             $this->similarTenders = $this->findSimilarTenders($data);
             
             if (!empty($this->similarTenders)) {
@@ -987,6 +1046,7 @@ class TenderWorkflow extends Page implements HasForms
     
     public function confirmSendForStudyAnyway(): void
     {
+        // المستخدم أكد أنه يريد الإرسال للدراسة على أي حال
         $this->duplicateCheckConfirmed = true;
         $this->showDuplicateWarning = false;
         $data = $this->form->getState();
@@ -995,28 +1055,47 @@ class TenderWorkflow extends Page implements HasForms
     
     protected function performSendForStudy(array $data): void
     {
-        $data['status'] = TenderStatus::STUDYING; // تغيير الحالة للدراسة
-        
-        if ($this->record && $this->record->exists) {
-            $this->record->update($data);
-        } else {
-            $this->record = Tender::create($data);
-        }
-        
-        $this->form->model($this->record)->fill($this->record->toArray());
-        
-        // إعادة تعيين متغيرات التكرار
-        $this->duplicateCheckConfirmed = false;
-        $this->similarTenders = [];
-        
-        Notification::make()
-            ->title('تم إرسال العطاء للدراسة والقرار')
-            ->icon('heroicon-o-paper-airplane')
-            ->success()
-            ->send();
+        try {
+            // التأكد من القيم الافتراضية
+            $data['status'] = TenderStatus::STUDYING;
+            $data['tender_scope'] = $data['tender_scope'] ?? 'local';
+            $data['is_direct_sale'] = $data['is_direct_sale'] ?? false;
+            $data['is_english_tender'] = $data['is_english_tender'] ?? false;
+            $data['is_package_tender'] = $data['is_package_tender'] ?? false;
             
-        // Redirect to same page with record
-        $this->redirect(static::getUrl() . '?record=' . $this->record->id . '&step=aldrast-walqrar');
+            if ($this->record && $this->record->exists) {
+                $this->record->update($data);
+            } else {
+                $this->record = Tender::create($data);
+            }
+            
+            $this->form->model($this->record)->fill($this->record->toArray());
+            
+            // إعادة تعيين متغيرات التكرار
+            $this->duplicateCheckConfirmed = false;
+            $this->similarTenders = [];
+            
+            Notification::make()
+                ->title('تم إرسال العطاء للدراسة والقرار')
+                ->icon('heroicon-o-paper-airplane')
+                ->success()
+                ->send();
+                
+            // Redirect to same page with record
+            $this->redirect(static::getUrl() . '?record=' . $this->record->id . '&step=aldrast-walqrar');
+            
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('حدث خطأ أثناء الحفظ')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+                
+            \Log::error('Tender sendForStudy error: ' . $e->getMessage(), [
+                'data' => $data,
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 
     protected function getHeaderActions(): array

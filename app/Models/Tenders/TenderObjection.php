@@ -243,7 +243,7 @@ class TenderObjection extends Model
     /**
      * قبول الاعتراض
      */
-    public function accept(int $userId, string $decision, string $justification = null): void
+    public function accept(int $userId, string $decision, ?string $justification = null): void
     {
         $this->update([
             'status' => 'accepted',

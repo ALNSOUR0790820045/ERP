@@ -39,7 +39,7 @@ class IncomeTaxBracket extends Model
     /**
      * حساب ضريبة الدخل للراتب
      */
-    public static function calculateTax(float $annualIncome, string $taxpayerType = 'individual', int $year = null): float
+    public static function calculateTax(float $annualIncome, string $taxpayerType = 'individual', ?int $year = null): float
     {
         $year = $year ?? date('Y');
         

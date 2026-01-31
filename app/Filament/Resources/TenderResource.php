@@ -392,6 +392,42 @@ class TenderResource extends Resource
                                             ->numeric(),
                                     ]),
                             ]),
+                        
+                        // شراء العطاء
+                        Forms\Components\Tabs\Tab::make('شراء العطاء')
+                            ->icon('heroicon-o-shopping-cart')
+                            ->hidden(fn (Forms\Get $get) => $get('is_direct_sale'))
+                            ->schema([
+                                Forms\Components\Section::make('شراء وثائق العطاء')
+                                    ->columns(3)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('documents_purchased')
+                                            ->label('تم شراء الوثائق')
+                                            ->live(),
+                                        Forms\Components\DatePicker::make('purchase_date')
+                                            ->label('تاريخ الشراء')
+                                            ->visible(fn (Forms\Get $get) => $get('documents_purchased')),
+                                        Forms\Components\TextInput::make('purchase_receipt_number')
+                                            ->label('رقم إيصال الشراء')
+                                            ->maxLength(50)
+                                            ->visible(fn (Forms\Get $get) => $get('documents_purchased')),
+                                    ]),
+                                    
+                                Forms\Components\Section::make('زيارة الموقع')
+                                    ->columns(3)
+                                    ->schema([
+                                        Forms\Components\Toggle::make('site_visit_mandatory')
+                                            ->label('الزيارة إلزامية'),
+                                        Forms\Components\Toggle::make('site_visit_attended')
+                                            ->label('تمت الزيارة')
+                                            ->live(),
+                                        Forms\Components\Textarea::make('site_visit_notes')
+                                            ->label('ملاحظات الزيارة')
+                                            ->rows(3)
+                                            ->columnSpanFull()
+                                            ->visible(fn (Forms\Get $get) => $get('site_visit_attended')),
+                                    ]),
+                            ]),
                             
                         // التواريخ
                         Forms\Components\Tabs\Tab::make('التواريخ')
@@ -661,16 +697,21 @@ class TenderResource extends Resource
     {
         return [
             'index' => Pages\ListTenders::route('/'),
+            'create' => Pages\CreateTender::route('/create'),
             'view' => Pages\ViewTender::route('/{record}'),
+            // صفحات المراحل - كل مرحلة بصلاحياتها
+            'discovery' => Pages\TenderDiscoveryPage::route('/{record}/discovery'),
+            'study' => Pages\TenderStudyPage::route('/{record}/study'),
+            'pricing' => Pages\TenderPricingPage::route('/{record}/pricing'),
+            'submission' => Pages\TenderSubmissionPage::route('/{record}/submission'),
+            'opening' => Pages\TenderOpeningPage::route('/{record}/opening'),
+            'award' => Pages\TenderAwardPage::route('/{record}/award'),
         ];
     }
     
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+        return parent::getEloquentQuery();
     }
     
     public static function getNavigationBadge(): ?string

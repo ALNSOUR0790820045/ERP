@@ -19,6 +19,25 @@ class Tender extends Model
 {
     use SoftDeletes;
 
+    /**
+     * القيم الافتراضية للحقول
+     */
+    protected $attributes = [
+        'tender_scope' => 'local',
+        'status' => 'new',
+        'result' => 'pending',
+        'decision' => 'pending',
+        'is_direct_sale' => false,
+        'is_english_tender' => false,
+        'is_package_tender' => false,
+        'pre_bid_meeting_required' => false,
+        'allows_price_preferences' => false,
+        'allows_subcontracting' => true,
+        'allows_consortium' => true,
+        'allow_arithmetic_corrections' => true,
+        'words_over_numbers_precedence' => true,
+    ];
+
     protected $fillable = [
         // التعريف
         'tender_number',
@@ -160,6 +179,14 @@ class Tender extends Model
         'estimated_value',
         'currency_id',
         'documents_price',
+        
+        // شراء العطاء
+        'documents_purchased',
+        'purchase_date',
+        'purchase_receipt_number',
+        'site_visit_mandatory',
+        'site_visit_attended',
+        'site_visit_notes',
         
         // الكفالات
         'bid_bond_type',
@@ -330,6 +357,12 @@ class Tender extends Model
         'submission_date' => 'datetime',
         'award_date' => 'date',
         'expected_award_date' => 'date',
+        
+        // شراء العطاء
+        'documents_purchased' => 'boolean',
+        'purchase_date' => 'date',
+        'site_visit_mandatory' => 'boolean',
+        'site_visit_attended' => 'boolean',
         
         'estimated_value' => 'decimal:3',
         'documents_price' => 'decimal:2',
@@ -749,8 +782,29 @@ class Tender extends Model
     public static function generateNumber(): string
     {
         $year = now()->year;
-        $count = static::whereYear('created_at', $year)->count() + 1;
-        return sprintf('TND-%d-%04d', $year, $count);
+        $prefix = "TND-{$year}-";
+        
+        // البحث عن آخر رقم مستخدم
+        $lastTender = static::withTrashed()
+            ->where('tender_number', 'like', $prefix . '%')
+            ->orderByRaw("CAST(SUBSTR(tender_number, -4) AS INTEGER) DESC")
+            ->first();
+        
+        if ($lastTender) {
+            $lastNumber = (int) substr($lastTender->tender_number, -4);
+            $count = $lastNumber + 1;
+        } else {
+            $count = 1;
+        }
+        
+        // التحقق من أن الرقم غير موجود
+        $newNumber = sprintf('TND-%d-%04d', $year, $count);
+        while (static::withTrashed()->where('tender_number', $newNumber)->exists()) {
+            $count++;
+            $newNumber = sprintf('TND-%d-%04d', $year, $count);
+        }
+        
+        return $newNumber;
     }
 
     public function calculateTotalCost(): void

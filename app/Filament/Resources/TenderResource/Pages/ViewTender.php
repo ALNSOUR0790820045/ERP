@@ -30,21 +30,149 @@ class ViewTender extends ViewRecord
             TenderTimelineWidget::class,
         ];
     }
+    
+    /**
+     * التحقق من صلاحية المستخدم
+     */
+    protected function userCan(string $permission): bool
+    {
+        $user = auth()->user();
+        return $user->isSuperAdmin() || $user->hasPermission($permission);
+    }
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('edit_tender')
-                ->label('تعديل')
-                ->icon('heroicon-o-pencil')
-                ->url(fn () => \App\Filament\Pages\TenderWorkflow::getUrl() . '?record=' . $this->record->id),
+            // ==============================================
+            // أزرار التنقل للمراحل - كل زر مرتبط بصلاحية
+            // ==============================================
             
-            // ===== المرحلة 1: الرصد =====
+            // 1. مرحلة الرصد والتسجيل
+            Actions\Action::make('edit_discovery')
+                ->label('تعديل الرصد')
+                ->icon('heroicon-o-eye')
+                ->color('gray')
+                ->visible(function () {
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.discovery.access');
+                })
+                ->url(fn () => TenderResource::getUrl('discovery', ['record' => $this->record])),
+
+            // 2. مرحلة الدراسة
+            Actions\Action::make('edit_study')
+                ->label('الدراسة')
+                ->icon('heroicon-o-clipboard-document-list')
+                ->color('info')
+                ->visible(function () {
+                    $user = auth()->user();
+                    if (!$user->isSuperAdmin() && !$user->hasPermission('tenders.study.access')) {
+                        return false;
+                    }
+                    // الزر يظهر فقط إذا العطاء في مرحلة الدراسة أو بعدها
+                    return !in_array($this->record->status, [TenderStatus::NEW]);
+                })
+                ->url(fn () => TenderResource::getUrl('study', ['record' => $this->record])),
+
+            // 3. مرحلة التسعير
+            Actions\Action::make('edit_pricing')
+                ->label('التسعير')
+                ->icon('heroicon-o-calculator')
+                ->color('primary')
+                ->visible(function () {
+                    $user = auth()->user();
+                    if (!$user->isSuperAdmin() && !$user->hasPermission('tenders.pricing.access')) {
+                        return false;
+                    }
+                    // يظهر بعد قرار GO
+                    return in_array($this->record->status, [
+                        TenderStatus::GO, 
+                        TenderStatus::PRICING, 
+                        TenderStatus::READY,
+                        TenderStatus::SUBMITTED,
+                        TenderStatus::OPENING,
+                        TenderStatus::WON,
+                        TenderStatus::LOST,
+                    ]);
+                })
+                ->url(fn () => TenderResource::getUrl('pricing', ['record' => $this->record])),
+
+            // 4. مرحلة التقديم
+            Actions\Action::make('edit_submission')
+                ->label('التقديم')
+                ->icon('heroicon-o-paper-airplane')
+                ->color('success')
+                ->visible(function () {
+                    $user = auth()->user();
+                    if (!$user->isSuperAdmin() && !$user->hasPermission('tenders.submission.access')) {
+                        return false;
+                    }
+                    // يظهر بعد أن يكون جاهز أو بعده
+                    return in_array($this->record->status, [
+                        TenderStatus::READY,
+                        TenderStatus::SUBMITTED,
+                        TenderStatus::OPENING,
+                        TenderStatus::WON,
+                        TenderStatus::LOST,
+                    ]);
+                })
+                ->url(fn () => TenderResource::getUrl('submission', ['record' => $this->record])),
+
+            // 5. مرحلة الفتح
+            Actions\Action::make('edit_opening')
+                ->label('الفتح')
+                ->icon('heroicon-o-envelope-open')
+                ->color('warning')
+                ->visible(function () {
+                    $user = auth()->user();
+                    if (!$user->isSuperAdmin() && !$user->hasPermission('tenders.opening.access')) {
+                        return false;
+                    }
+                    // يظهر بعد التقديم
+                    return in_array($this->record->status, [
+                        TenderStatus::SUBMITTED,
+                        TenderStatus::OPENING,
+                        TenderStatus::WON,
+                        TenderStatus::LOST,
+                    ]);
+                })
+                ->url(fn () => TenderResource::getUrl('opening', ['record' => $this->record])),
+
+            // 6. مرحلة الترسية
+            Actions\Action::make('edit_award')
+                ->label('الترسية')
+                ->icon('heroicon-o-trophy')
+                ->color('danger')
+                ->visible(function () {
+                    $user = auth()->user();
+                    if (!$user->isSuperAdmin() && !$user->hasPermission('tenders.award.access')) {
+                        return false;
+                    }
+                    // يظهر بعد الفتح
+                    return in_array($this->record->status, [
+                        TenderStatus::OPENING,
+                        TenderStatus::WON,
+                        TenderStatus::LOST,
+                        TenderStatus::CANCELLED,
+                    ]);
+                })
+                ->url(fn () => TenderResource::getUrl('award', ['record' => $this->record])),
+
+            // ==============================================
+            // الإجراءات السريعة (تبقى كما هي للتوافق)
+            // ==============================================
+            
+            // المرحلة 1: الرصد - بدء الدراسة
             Actions\Action::make('start_study')
                 ->label('بدء الدراسة')
                 ->icon('heroicon-o-clipboard-document-list')
                 ->color('info')
-                ->visible(fn () => $this->record->status === TenderStatus::NEW)
+                ->visible(function () {
+                    if ($this->record->status !== TenderStatus::NEW) {
+                        return false;
+                    }
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.study.edit');
+                })
                 ->requiresConfirmation()
                 ->modalHeading('بدء دراسة العطاء')
                 ->modalDescription('سيتم نقل العطاء لمرحلة الدراسة والتقييم')
@@ -54,12 +182,18 @@ class ViewTender extends ViewRecord
                     Notification::make()->title('تم بدء الدراسة')->success()->send();
                 }),
 
-            // ===== المرحلة 2: الدراسة والقرار =====
+            // المرحلة 2: الدراسة والقرار
             Actions\Action::make('go_no_go')
                 ->label('قرار Go/No-Go')
                 ->icon('heroicon-o-scale')
                 ->color('warning')
-                ->visible(fn () => $this->record->status === TenderStatus::STUDYING)
+                ->visible(function () {
+                    if ($this->record->status !== TenderStatus::STUDYING) {
+                        return false;
+                    }
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.study.decide');
+                })
                 ->form([
                     \Filament\Forms\Components\Section::make('تقييم العطاء')
                         ->schema([
@@ -106,7 +240,13 @@ class ViewTender extends ViewRecord
                 ->label('بدء التسعير')
                 ->icon('heroicon-o-calculator')
                 ->color('primary')
-                ->visible(fn () => $this->record->status === TenderStatus::GO)
+                ->visible(function () {
+                    if ($this->record->status !== TenderStatus::GO) {
+                        return false;
+                    }
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.pricing.edit');
+                })
                 ->requiresConfirmation()
                 ->action(function () {
                     $this->record->update(['status' => TenderStatus::PRICING]);
@@ -118,7 +258,13 @@ class ViewTender extends ViewRecord
                 ->label('جاهز للتقديم')
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
-                ->visible(fn () => $this->record->status === TenderStatus::PRICING)
+                ->visible(function () {
+                    if ($this->record->status !== TenderStatus::PRICING) {
+                        return false;
+                    }
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.pricing.approve');
+                })
                 ->form([
                     \Filament\Forms\Components\Section::make('قائمة التحقق')
                         ->schema([
@@ -155,7 +301,13 @@ class ViewTender extends ViewRecord
                 ->label('تقديم العطاء')
                 ->icon('heroicon-o-paper-airplane')
                 ->color('success')
-                ->visible(fn () => $this->record->status === TenderStatus::READY)
+                ->visible(function () {
+                    if ($this->record->status !== TenderStatus::READY) {
+                        return false;
+                    }
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.submission.confirm');
+                })
                 ->form([
                     \Filament\Forms\Components\Section::make('بيانات التقديم')
                         ->schema([
@@ -199,7 +351,13 @@ class ViewTender extends ViewRecord
                 ->label('تسجيل نتائج الفتح')
                 ->icon('heroicon-o-envelope-open')
                 ->color('info')
-                ->visible(fn () => $this->record->status === TenderStatus::SUBMITTED)
+                ->visible(function () {
+                    if ($this->record->status !== TenderStatus::SUBMITTED) {
+                        return false;
+                    }
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.opening.edit');
+                })
                 ->form([
                     \Filament\Forms\Components\Section::make('نتائج الفتح')
                         ->schema([
@@ -238,7 +396,13 @@ class ViewTender extends ViewRecord
                 ->label('تسجيل النتيجة النهائية')
                 ->icon('heroicon-o-trophy')
                 ->color('warning')
-                ->visible(fn () => $this->record->status === TenderStatus::OPENING)
+                ->visible(function () {
+                    if ($this->record->status !== TenderStatus::OPENING) {
+                        return false;
+                    }
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.award.edit');
+                })
                 ->form([
                     \Filament\Forms\Components\Section::make('النتيجة النهائية')
                         ->schema([
@@ -303,7 +467,13 @@ class ViewTender extends ViewRecord
                 ->label('تحويل لمشروع')
                 ->icon('heroicon-o-building-office-2')
                 ->color('success')
-                ->visible(fn () => $this->record->status === TenderStatus::WON && !$this->record->contract_id)
+                ->visible(function () {
+                    if ($this->record->status !== TenderStatus::WON || $this->record->contract_id) {
+                        return false;
+                    }
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.award.convert_to_project');
+                })
                 ->url(fn () => route('filament.admin.resources.projects.create', ['tender_id' => $this->record->id])),
 
             // إجراءات إضافية
@@ -367,6 +537,15 @@ class ViewTender extends ViewRecord
 
     public function infolist(Infolist $infolist): Infolist
     {
+        $user = auth()->user();
+        $canAccessDiscovery = $user->isSuperAdmin() || $user->hasPermission('tenders.discovery.access');
+        $canAccessPurchase = $user->isSuperAdmin() || $user->hasPermission('tenders.purchase.access');
+        $canAccessStudy = $user->isSuperAdmin() || $user->hasPermission('tenders.study.access');
+        $canAccessPricing = $user->isSuperAdmin() || $user->hasPermission('tenders.pricing.access');
+        $canAccessSubmission = $user->isSuperAdmin() || $user->hasPermission('tenders.submission.access');
+        $canAccessOpening = $user->isSuperAdmin() || $user->hasPermission('tenders.opening.access');
+        $canAccessAward = $user->isSuperAdmin() || $user->hasPermission('tenders.award.access');
+        
         return $infolist
             ->schema([
                 // ===== شريط التقدم =====
@@ -410,7 +589,7 @@ class ViewTender extends ViewRecord
                     ])
                     ->columnSpanFull(),
 
-                // ===== التبويبات الستة المحسّنة =====
+                // ===== التبويبات =====
                 Tabs::make('TenderTabs')
                     ->tabs([
                         // ========== المرحلة 1: الرصد والتسجيل ==========
@@ -418,6 +597,7 @@ class ViewTender extends ViewRecord
                             ->icon('heroicon-o-magnifying-glass')
                             ->badge(fn ($record) => $record->status === TenderStatus::NEW ? 'جديد' : null)
                             ->badgeColor('info')
+                            ->visible($canAccessDiscovery)
                             ->schema([
                                 Infolists\Components\Grid::make(2)
                                     ->schema([
@@ -433,7 +613,8 @@ class ViewTender extends ViewRecord
                                                             ->weight('bold'),
                                                         Infolists\Components\TextEntry::make('reference_number')
                                                             ->label('الرقم المرجعي')
-                                                            ->copyable(),
+                                                            ->copyable()
+                                                            ->placeholder('غير محدد'),
                                                     ]),
                                                 Infolists\Components\TextEntry::make('name_ar')
                                                     ->label('اسم العطاء')
@@ -451,7 +632,8 @@ class ViewTender extends ViewRecord
                                                 Infolists\Components\TextEntry::make('description')
                                                     ->label('الوصف')
                                                     ->columnSpanFull()
-                                                    ->markdown(),
+                                                    ->markdown()
+                                                    ->placeholder('لا يوجد وصف'),
                                             ]),
 
                                         // العمود الأيمن
@@ -459,54 +641,176 @@ class ViewTender extends ViewRecord
                                             Infolists\Components\Section::make('الجهة المالكة')
                                                 ->icon('heroicon-o-building-library')
                                                 ->schema([
-                                                    Infolists\Components\TextEntry::make('owner_name')
+                                                    Infolists\Components\TextEntry::make('owner.name_ar')
                                                         ->label('اسم الجهة')
-                                                        ->weight('bold'),
+                                                        ->weight('bold')
+                                                        ->placeholder(fn ($record) => $record->owner_name ?? 'غير محدد'),
                                                     Infolists\Components\TextEntry::make('owner_contact_person')
-                                                        ->label('جهة الاتصال'),
+                                                        ->label('جهة الاتصال')
+                                                        ->placeholder('غير محدد'),
                                                     Infolists\Components\Grid::make(2)
                                                         ->schema([
                                                             Infolists\Components\TextEntry::make('owner_phone')
                                                                 ->label('الهاتف')
-                                                                ->icon('heroicon-o-phone'),
+                                                                ->icon('heroicon-o-phone')
+                                                                ->placeholder('-'),
                                                             Infolists\Components\TextEntry::make('owner_email')
                                                                 ->label('البريد')
-                                                                ->icon('heroicon-o-envelope'),
+                                                                ->icon('heroicon-o-envelope')
+                                                                ->placeholder('-'),
                                                         ]),
                                                 ]),
-                                            Infolists\Components\Section::make('التواريخ الهامة')
+                                            Infolists\Components\Section::make('التواريخ المهمة')
                                                 ->icon('heroicon-o-calendar')
                                                 ->schema([
                                                     Infolists\Components\Grid::make(2)
                                                         ->schema([
                                                             Infolists\Components\TextEntry::make('publication_date')
                                                                 ->label('تاريخ الإعلان')
-                                                                ->date(),
-                                                            Infolists\Components\TextEntry::make('documents_sale_end')
-                                                                ->label('شراء الوثائق حتى')
-                                                                ->date(),
-                                                            Infolists\Components\TextEntry::make('site_visit_date')
-                                                                ->label('زيارة الموقع')
-                                                                ->date(),
-                                                            Infolists\Components\TextEntry::make('questions_deadline')
-                                                                ->label('آخر موعد للاستفسارات')
-                                                                ->date(),
+                                                                ->date()
+                                                                ->placeholder('غير محدد'),
+                                                            Infolists\Components\TextEntry::make('submission_deadline')
+                                                                ->label('موعد التقديم')
+                                                                ->dateTime()
+                                                                ->weight('bold')
+                                                                ->color('danger'),
                                                         ]),
-                                                    Infolists\Components\TextEntry::make('submission_deadline')
-                                                        ->label('موعد التقديم')
-                                                        ->dateTime()
-                                                        ->weight('bold')
-                                                        ->color('danger'),
                                                 ]),
                                         ]),
                                     ]),
                             ]),
 
-                        // ========== المرحلة 2: الدراسة والقرار ==========
+                        // ========== المرحلة 2: شراء العطاء (جديد) ==========
+                        Tabs\Tab::make('شراء العطاء')
+                            ->icon('heroicon-o-shopping-cart')
+                            ->badge(fn ($record) => $record->documents_purchased ? '✓' : null)
+                            ->badgeColor('success')
+                            ->visible($canAccessPurchase)
+                            ->schema([
+                                Infolists\Components\Grid::make(2)
+                                    ->schema([
+                                        // بيانات شراء الوثائق
+                                        Infolists\Components\Section::make('شراء وثائق العطاء')
+                                            ->icon('heroicon-o-document-arrow-down')
+                                            ->schema([
+                                                Infolists\Components\Grid::make(2)
+                                                    ->schema([
+                                                        Infolists\Components\TextEntry::make('documents_sale_start')
+                                                            ->label('بداية بيع الوثائق')
+                                                            ->date()
+                                                            ->placeholder('غير محدد'),
+                                                        Infolists\Components\TextEntry::make('documents_sale_end')
+                                                            ->label('نهاية بيع الوثائق')
+                                                            ->date()
+                                                            ->placeholder('غير محدد'),
+                                                        Infolists\Components\TextEntry::make('documents_price')
+                                                            ->label('ثمن الوثائق')
+                                                            ->money('JOD')
+                                                            ->placeholder('غير محدد'),
+                                                        Infolists\Components\IconEntry::make('documents_purchased')
+                                                            ->label('تم شراء الوثائق')
+                                                            ->boolean(),
+                                                    ]),
+                                                Infolists\Components\Grid::make(2)
+                                                    ->schema([
+                                                        Infolists\Components\TextEntry::make('purchase_date')
+                                                            ->label('تاريخ الشراء')
+                                                            ->date()
+                                                            ->placeholder('لم يتم الشراء'),
+                                                        Infolists\Components\TextEntry::make('purchase_receipt_number')
+                                                            ->label('رقم إيصال الشراء')
+                                                            ->copyable()
+                                                            ->placeholder('غير محدد'),
+                                                    ]),
+                                            ]),
+
+                                        // زيارة الموقع
+                                        Infolists\Components\Section::make('زيارة الموقع')
+                                            ->icon('heroicon-o-map-pin')
+                                            ->schema([
+                                                Infolists\Components\Grid::make(2)
+                                                    ->schema([
+                                                        Infolists\Components\TextEntry::make('site_visit_date')
+                                                            ->label('موعد زيارة الموقع')
+                                                            ->dateTime()
+                                                            ->placeholder('غير محدد'),
+                                                        Infolists\Components\IconEntry::make('site_visit_mandatory')
+                                                            ->label('الزيارة إلزامية')
+                                                            ->boolean(),
+                                                    ]),
+                                                Infolists\Components\TextEntry::make('site_address')
+                                                    ->label('عنوان الموقع')
+                                                    ->columnSpanFull()
+                                                    ->placeholder('غير محدد'),
+                                                Infolists\Components\Grid::make(2)
+                                                    ->schema([
+                                                        Infolists\Components\TextEntry::make('city')
+                                                            ->label('المدينة')
+                                                            ->placeholder('غير محدد'),
+                                                        Infolists\Components\TextEntry::make('country')
+                                                            ->label('الدولة')
+                                                            ->placeholder('الأردن'),
+                                                    ]),
+                                            ]),
+                                    ]),
+
+                                // الاستفسارات
+                                Infolists\Components\Section::make('الاستفسارات والتوضيحات')
+                                    ->icon('heroicon-o-question-mark-circle')
+                                    ->schema([
+                                        Infolists\Components\Grid::make(3)
+                                            ->schema([
+                                                Infolists\Components\TextEntry::make('questions_deadline')
+                                                    ->label('آخر موعد للاستفسارات')
+                                                    ->dateTime()
+                                                    ->placeholder('غير محدد'),
+                                                Infolists\Components\TextEntry::make('clarifications_count')
+                                                    ->label('عدد التوضيحات')
+                                                    ->state(fn ($record) => $record->clarifications()->count())
+                                                    ->badge()
+                                                    ->color('info'),
+                                                Infolists\Components\TextEntry::make('addenda_count')
+                                                    ->label('الملاحق')
+                                                    ->state(fn ($record) => $record->documents()->where('type', 'addendum')->count())
+                                                    ->badge()
+                                                    ->color('warning'),
+                                            ]),
+                                    ])
+                                    ->collapsible(),
+
+                                // اجتماع ما قبل تقديم العطاءات
+                                Infolists\Components\Section::make('اجتماع ما قبل التقديم')
+                                    ->icon('heroicon-o-user-group')
+                                    ->schema([
+                                        Infolists\Components\Grid::make(3)
+                                            ->schema([
+                                                Infolists\Components\IconEntry::make('pre_bid_meeting_required')
+                                                    ->label('الاجتماع مطلوب')
+                                                    ->boolean(),
+                                                Infolists\Components\TextEntry::make('pre_bid_meeting_date')
+                                                    ->label('موعد الاجتماع')
+                                                    ->dateTime()
+                                                    ->placeholder('غير محدد'),
+                                                Infolists\Components\TextEntry::make('pre_bid_meeting_location')
+                                                    ->label('مكان الاجتماع')
+                                                    ->placeholder('غير محدد'),
+                                            ]),
+                                        Infolists\Components\TextEntry::make('pre_bid_meeting_minutes')
+                                            ->label('محضر الاجتماع')
+                                            ->markdown()
+                                            ->columnSpanFull()
+                                            ->visible(fn ($record) => $record->pre_bid_meeting_minutes),
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed(fn ($record) => !$record->pre_bid_meeting_required),
+                            ]),
+
+                        // ========== المرحلة 3: الدراسة والقرار ==========
                         Tabs\Tab::make('الدراسة والقرار')
                             ->icon('heroicon-o-clipboard-document-check')
                             ->badge(fn ($record) => $record->decision ? ($record->decision === 'go' ? 'Go' : 'No-Go') : null)
                             ->badgeColor(fn ($record) => $record->decision === 'go' ? 'success' : 'danger')
+                            ->visible($canAccessStudy)
                             ->schema([
                                 Infolists\Components\Grid::make(2)
                                     ->schema([
@@ -524,14 +828,17 @@ class ViewTender extends ViewRecord
                                                             ->color(fn ($state) => $state === 'go' ? 'success' : ($state === 'no_go' ? 'danger' : 'warning')),
                                                         Infolists\Components\TextEntry::make('decision_date')
                                                             ->label('تاريخ القرار')
-                                                            ->date(),
+                                                            ->date()
+                                                            ->placeholder('لم يتخذ بعد'),
                                                         Infolists\Components\TextEntry::make('decisionBy.name')
-                                                            ->label('بواسطة'),
+                                                            ->label('بواسطة')
+                                                            ->placeholder('-'),
                                                     ]),
                                                 Infolists\Components\TextEntry::make('decision_notes')
                                                     ->label('مبررات القرار')
                                                     ->columnSpanFull()
-                                                    ->markdown(),
+                                                    ->markdown()
+                                                    ->placeholder('لا توجد ملاحظات'),
                                             ]),
 
                                         // المتطلبات والتأهيل
@@ -542,21 +849,26 @@ class ViewTender extends ViewRecord
                                                     ->schema([
                                                         Infolists\Components\TextEntry::make('required_classification')
                                                             ->label('التصنيف المطلوب')
-                                                            ->badge(),
+                                                            ->badge()
+                                                            ->placeholder('غير محدد'),
                                                         Infolists\Components\TextEntry::make('minimum_experience_years')
                                                             ->label('الخبرة (سنوات)')
-                                                            ->suffix(' سنة'),
+                                                            ->suffix(' سنة')
+                                                            ->placeholder('-'),
                                                         Infolists\Components\TextEntry::make('minimum_similar_projects')
                                                             ->label('المشاريع المماثلة')
-                                                            ->suffix(' مشروع'),
+                                                            ->suffix(' مشروع')
+                                                            ->placeholder('-'),
                                                         Infolists\Components\TextEntry::make('minimum_project_value')
                                                             ->label('الحد الأدنى للقيمة')
-                                                            ->money('JOD'),
+                                                            ->money('JOD')
+                                                            ->placeholder('-'),
                                                     ]),
                                                 Infolists\Components\TextEntry::make('technical_requirements')
                                                     ->label('المتطلبات الفنية')
                                                     ->columnSpanFull()
-                                                    ->markdown(),
+                                                    ->markdown()
+                                                    ->placeholder('لا توجد متطلبات محددة'),
                                             ]),
                                     ]),
 
@@ -568,26 +880,31 @@ class ViewTender extends ViewRecord
                                             ->schema([
                                                 Infolists\Components\TextEntry::make('bid_bond_percentage')
                                                     ->label('كفالة العطاء')
-                                                    ->suffix('%'),
+                                                    ->suffix('%')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('performance_bond_percentage')
                                                     ->label('كفالة الأداء')
-                                                    ->suffix('%'),
+                                                    ->suffix('%')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('advance_payment_percentage')
                                                     ->label('الدفعة المقدمة')
-                                                    ->suffix('%'),
+                                                    ->suffix('%')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('retention_percentage')
                                                     ->label('المحتجزات')
-                                                    ->suffix('%'),
+                                                    ->suffix('%')
+                                                    ->placeholder('-'),
                                             ]),
                                     ])
                                     ->collapsible(),
                             ]),
 
-                        // ========== المرحلة 3: إعداد العرض ==========
+                        // ========== المرحلة 4: إعداد العرض ==========
                         Tabs\Tab::make('إعداد العرض')
                             ->icon('heroicon-o-document-text')
                             ->badge(fn ($record) => $record->boqItems()->count() ?: null)
                             ->badgeColor('primary')
+                            ->visible($canAccessPricing)
                             ->schema([
                                 // ملخص التسعير
                                 Infolists\Components\Section::make('ملخص التسعير')
@@ -598,29 +915,34 @@ class ViewTender extends ViewRecord
                                                 Infolists\Components\TextEntry::make('total_direct_cost')
                                                     ->label('التكاليف المباشرة')
                                                     ->money('JOD')
-                                                    ->color('info'),
+                                                    ->color('info')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('total_overhead')
                                                     ->label('المصاريف العمومية')
-                                                    ->money('JOD'),
+                                                    ->money('JOD')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('total_cost')
                                                     ->label('إجمالي التكلفة')
                                                     ->money('JOD')
-                                                    ->weight('bold'),
+                                                    ->weight('bold')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('markup_percentage')
                                                     ->label('نسبة الربح')
                                                     ->suffix('%')
                                                     ->badge()
-                                                    ->color('success'),
+                                                    ->color('success')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('submitted_price')
                                                     ->label('السعر المقدم')
                                                     ->money('JOD')
                                                     ->weight('bold')
                                                     ->size('lg')
-                                                    ->color('success'),
+                                                    ->color('success')
+                                                    ->placeholder('-'),
                                             ]),
                                     ]),
 
-                                // جدول الكميات (أول 10 بنود)
+                                // جدول الكميات
                                 Infolists\Components\Section::make('جدول الكميات')
                                     ->icon('heroicon-o-table-cells')
                                     ->schema([
@@ -650,11 +972,12 @@ class ViewTender extends ViewRecord
                                     ->collapsible(),
                             ]),
 
-                        // ========== المرحلة 4: التقديم ==========
+                        // ========== المرحلة 5: التقديم ==========
                         Tabs\Tab::make('التقديم')
                             ->icon('heroicon-o-paper-airplane')
                             ->badge(fn ($record) => $record->status === TenderStatus::SUBMITTED ? '✓' : null)
                             ->badgeColor('success')
+                            ->visible($canAccessSubmission)
                             ->schema([
                                 Infolists\Components\Grid::make(2)
                                     ->schema([
@@ -666,15 +989,19 @@ class ViewTender extends ViewRecord
                                                         Infolists\Components\TextEntry::make('submission_date')
                                                             ->label('تاريخ ووقت التقديم')
                                                             ->dateTime()
-                                                            ->weight('bold'),
+                                                            ->weight('bold')
+                                                            ->placeholder('لم يتم التقديم'),
                                                         Infolists\Components\TextEntry::make('submission_method')
                                                             ->label('طريقة التقديم')
-                                                            ->badge(),
+                                                            ->badge()
+                                                            ->placeholder('-'),
                                                         Infolists\Components\TextEntry::make('receipt_number')
                                                             ->label('رقم الإيصال')
-                                                            ->copyable(),
+                                                            ->copyable()
+                                                            ->placeholder('-'),
                                                         Infolists\Components\TextEntry::make('submittedBy.name')
-                                                            ->label('مقدم بواسطة'),
+                                                            ->label('مقدم بواسطة')
+                                                            ->placeholder('-'),
                                                     ]),
                                             ]),
 
@@ -685,21 +1012,24 @@ class ViewTender extends ViewRecord
                                                     ->schema([
                                                         Infolists\Components\TextEntry::make('bid_bond_type')
                                                             ->label('نوع الكفالة')
-                                                            ->badge(),
+                                                            ->badge()
+                                                            ->placeholder('-'),
                                                         Infolists\Components\TextEntry::make('bid_bond_amount')
                                                             ->label('مبلغ الكفالة')
                                                             ->money('JOD')
-                                                            ->weight('bold'),
+                                                            ->weight('bold')
+                                                            ->placeholder('-'),
                                                     ]),
                                             ]),
                                     ]),
                             ]),
 
-                        // ========== المرحلة 5: الفتح والنتائج ==========
+                        // ========== المرحلة 6: الفتح والنتائج ==========
                         Tabs\Tab::make('الفتح والنتائج')
                             ->icon('heroicon-o-chart-bar')
                             ->badge(fn ($record) => $record->our_rank ? '#' . $record->our_rank : null)
                             ->badgeColor(fn ($record) => $record->our_rank == 1 ? 'success' : 'warning')
+                            ->visible($canAccessOpening)
                             ->schema([
                                 Infolists\Components\Grid::make(2)
                                     ->schema([
@@ -710,17 +1040,20 @@ class ViewTender extends ViewRecord
                                                     ->schema([
                                                         Infolists\Components\TextEntry::make('opening_date')
                                                             ->label('تاريخ الفتح')
-                                                            ->dateTime(),
+                                                            ->dateTime()
+                                                            ->placeholder('لم يتم الفتح'),
                                                         Infolists\Components\TextEntry::make('our_rank')
                                                             ->label('ترتيبنا')
                                                             ->badge()
                                                             ->size('lg')
-                                                            ->color(fn ($state) => $state == 1 ? 'success' : ($state <= 3 ? 'warning' : 'gray')),
+                                                            ->color(fn ($state) => $state == 1 ? 'success' : ($state <= 3 ? 'warning' : 'gray'))
+                                                            ->placeholder('-'),
                                                     ]),
                                                 Infolists\Components\TextEntry::make('submitted_price')
                                                     ->label('سعرنا المقدم')
                                                     ->money('JOD')
-                                                    ->weight('bold'),
+                                                    ->weight('bold')
+                                                    ->placeholder('-'),
                                             ]),
 
                                         Infolists\Components\Section::make('الفائز')
@@ -760,11 +1093,12 @@ class ViewTender extends ViewRecord
                                     ->collapsible(),
                             ]),
 
-                        // ========== المرحلة 6: الترسية والتحويل ==========
+                        // ========== المرحلة 7: الترسية والتحويل ==========
                         Tabs\Tab::make('الترسية والتحويل')
                             ->icon('heroicon-o-trophy')
                             ->badge(fn ($record) => $record->result?->value === 'won' ? '🏆' : null)
                             ->badgeColor('success')
+                            ->visible($canAccessAward)
                             ->schema([
                                 // النتيجة النهائية
                                 Infolists\Components\Section::make('النتيجة النهائية')
@@ -789,12 +1123,14 @@ class ViewTender extends ViewRecord
                                                     }),
                                                 Infolists\Components\TextEntry::make('award_date')
                                                     ->label('تاريخ الترسية')
-                                                    ->date(),
+                                                    ->date()
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('winning_price')
                                                     ->label('قيمة العقد')
                                                     ->money('JOD')
                                                     ->weight('bold')
-                                                    ->visible(fn ($record) => $record->result?->value === 'won'),
+                                                    ->visible(fn ($record) => $record->result?->value === 'won')
+                                                    ->placeholder('-'),
                                             ]),
                                     ]),
 
@@ -805,11 +1141,13 @@ class ViewTender extends ViewRecord
                                     ->schema([
                                         Infolists\Components\TextEntry::make('loss_reason')
                                             ->label('سبب الخسارة')
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->placeholder('غير محدد'),
                                         Infolists\Components\Grid::make(2)
                                             ->schema([
                                                 Infolists\Components\TextEntry::make('winner_name')
-                                                    ->label('الفائز'),
+                                                    ->label('الفائز')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('price_difference')
                                                     ->label('فرق السعر')
                                                     ->state(fn ($record) => $record->winning_price && $record->submitted_price 
@@ -839,7 +1177,8 @@ class ViewTender extends ViewRecord
                                             ->url(fn ($record) => $record->contract_id 
                                                 ? route('filament.admin.resources.contracts.view', $record->contract_id) 
                                                 : null)
-                                            ->color('primary'),
+                                            ->color('primary')
+                                            ->placeholder('لم يتم تحويله لعقد بعد'),
                                     ]),
                             ]),
 
@@ -848,6 +1187,7 @@ class ViewTender extends ViewRecord
                             ->icon('heroicon-o-flag')
                             ->badge(fn ($record) => $record->allows_price_preferences ? 'أفضليات' : null)
                             ->badgeColor('info')
+                            ->visible($canAccessStudy)
                             ->schema([
                                 // التصنيف والتخصص
                                 Infolists\Components\Section::make('التصنيف والتخصص المطلوب')
@@ -883,7 +1223,8 @@ class ViewTender extends ViewRecord
                                                     ->label('مدة الفترة')
                                                     ->suffix(' يوم')
                                                     ->badge()
-                                                    ->color('warning'),
+                                                    ->color('warning')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('objection_period_start')
                                                     ->label('بداية الفترة')
                                                     ->date()
@@ -899,32 +1240,6 @@ class ViewTender extends ViewRecord
                                             ]),
                                     ])
                                     ->collapsible(),
-
-                                // اجتماع ما قبل تقديم العطاءات
-                                Infolists\Components\Section::make('اجتماع ما قبل تقديم العطاءات')
-                                    ->icon('heroicon-o-user-group')
-                                    ->schema([
-                                        Infolists\Components\Grid::make(3)
-                                            ->schema([
-                                                Infolists\Components\IconEntry::make('pre_bid_meeting_required')
-                                                    ->label('الاجتماع مطلوب')
-                                                    ->boolean(),
-                                                Infolists\Components\TextEntry::make('pre_bid_meeting_date')
-                                                    ->label('موعد الاجتماع')
-                                                    ->dateTime()
-                                                    ->placeholder('غير محدد'),
-                                                Infolists\Components\TextEntry::make('pre_bid_meeting_location')
-                                                    ->label('مكان الاجتماع')
-                                                    ->placeholder('غير محدد'),
-                                            ]),
-                                        Infolists\Components\TextEntry::make('pre_bid_meeting_minutes')
-                                            ->label('محضر الاجتماع')
-                                            ->markdown()
-                                            ->columnSpanFull()
-                                            ->visible(fn ($record) => $record->pre_bid_meeting_minutes),
-                                    ])
-                                    ->collapsible()
-                                    ->collapsed(fn ($record) => !$record->pre_bid_meeting_required),
 
                                 Infolists\Components\Grid::make(2)
                                     ->schema([
@@ -984,7 +1299,8 @@ class ViewTender extends ViewRecord
                                                 Infolists\Components\TextEntry::make('max_consortium_members')
                                                     ->label('الحد الأقصى لأعضاء الائتلاف')
                                                     ->badge()
-                                                    ->visible(fn ($record) => $record->allows_consortium),
+                                                    ->visible(fn ($record) => $record->allows_consortium)
+                                                    ->placeholder('-'),
                                             ])
                                             ->collapsible(),
 
@@ -1021,15 +1337,18 @@ class ViewTender extends ViewRecord
                                                     ->label('درجة النجاح الفني')
                                                     ->suffix('%')
                                                     ->badge()
-                                                    ->color('primary'),
+                                                    ->color('primary')
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('technical_weight')
                                                     ->label('وزن التقييم الفني')
                                                     ->suffix('%')
-                                                    ->badge(),
+                                                    ->badge()
+                                                    ->placeholder('-'),
                                                 Infolists\Components\TextEntry::make('financial_weight')
                                                     ->label('وزن التقييم المالي')
                                                     ->suffix('%')
-                                                    ->badge(),
+                                                    ->badge()
+                                                    ->placeholder('-'),
                                             ]),
                                     ])
                                     ->collapsible(),

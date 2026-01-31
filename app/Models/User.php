@@ -2,22 +2,17 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'name',
         'name_ar',
@@ -28,28 +23,21 @@ class User extends Authenticatable
         'phone',
         'employee_id',
         'branch_id',
-        'role_id',
+        'role_id', // الدور الرئيسي (للتوافق)
         'language',
         'timezone',
         'is_active',
         'avatar',
+        'job_title',
+        'must_change_password',
+        'two_factor_enabled',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -65,8 +53,10 @@ class User extends Authenticatable
         ];
     }
 
+    // ==================== العلاقات ====================
+
     /**
-     * علاقة الدور
+     * الدور الرئيسي (للتوافق مع الكود القديم)
      */
     public function role(): BelongsTo
     {
@@ -74,32 +64,142 @@ class User extends Authenticatable
     }
 
     /**
-     * علاقة الفرع
+     * جميع أدوار المستخدم (نظام الأدوار المتعددة)
      */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'user_roles')
+            ->withPivot(['is_primary', 'assigned_at', 'assigned_by'])
+            ->withTimestamps();
+    }
+
+    /**
+     * الأدوار الوظيفية فقط
+     */
+    public function jobRoles(): BelongsToMany
+    {
+        return $this->roles()->where('type', Role::TYPE_JOB);
+    }
+
+    /**
+     * أدوار العطاءات فقط
+     */
+    public function tenderRoles(): BelongsToMany
+    {
+        return $this->roles()->where('type', Role::TYPE_TENDER);
+    }
+
+    /**
+     * الصلاحيات المؤقتة
+     */
+    public function temporaryPermissions(): HasMany
+    {
+        return $this->hasMany(TemporaryPermission::class);
+    }
+
+    /**
+     * الصلاحيات المؤقتة النشطة
+     */
+    public function activeTemporaryPermissions(): HasMany
+    {
+        return $this->temporaryPermissions()
+            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            });
+    }
+
+    /**
+     * صلاحيات المراحل للمستخدم
+     */
+    public function userStagePermissions(): HasMany
+    {
+        return $this->hasMany(UserStagePermission::class);
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
     }
 
-    /**
-     * علاقة الموظف
-     */
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
     }
+
+    // ==================== التحقق من الأدوار ====================
+
+    /**
+     * التحقق من دور معين (يدعم الأدوار المتعددة)
+     */
+    public function hasRole(string $roleCode): bool
+    {
+        // تحقق من الدور الرئيسي أولاً
+        if ($this->role?->code === $roleCode) {
+            return true;
+        }
+        
+        // تحقق من الأدوار المتعددة
+        return $this->roles()->where('code', $roleCode)->exists();
+    }
+
+    /**
+     * التحقق من أي دور من مجموعة
+     */
+    public function hasAnyRole(array $roleCodes): bool
+    {
+        if (in_array($this->role?->code, $roleCodes)) {
+            return true;
+        }
+        
+        return $this->roles()->whereIn('code', $roleCodes)->exists();
+    }
+
+    /**
+     * التحقق من نوع دور معين
+     */
+    public function hasRoleType(string $type): bool
+    {
+        if ($this->role?->type === $type) {
+            return true;
+        }
+        
+        return $this->roles()->where('type', $type)->exists();
+    }
+
+    // ==================== التحقق من الصلاحيات ====================
 
     /**
      * التحقق من صلاحية معينة
      */
     public function hasPermission(string $permissionCode): bool
     {
-        // مدير النظام لديه كل الصلاحيات
-        if ($this->role?->code === 'super_admin') {
+        if ($this->isSuperAdmin()) {
             return true;
         }
 
-        return $this->role?->hasPermission($permissionCode) ?? false;
+        // تحقق من الدور الرئيسي
+        if ($this->role?->hasPermission($permissionCode)) {
+            return true;
+        }
+
+        // تحقق من الأدوار المتعددة
+        foreach ($this->roles as $role) {
+            if ($role->hasPermission($permissionCode)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * التحقق من صلاحية مؤقتة على سجل معين
+     */
+    public function hasTemporaryPermission(Model $record, string $permission): bool
+    {
+        return TemporaryPermission::check($this->id, $record, $permission);
     }
 
     /**
@@ -128,9 +228,55 @@ class User extends Authenticatable
         return true;
     }
 
+    // ==================== إدارة الأدوار ====================
+
     /**
-     * الحصول على الاسم المعروض
+     * إضافة دور للمستخدم
      */
+    public function assignRole(Role|int $role, bool $isPrimary = false): void
+    {
+        $roleId = $role instanceof Role ? $role->id : $role;
+        
+        $this->roles()->syncWithoutDetaching([
+            $roleId => [
+                'is_primary' => $isPrimary,
+                'assigned_at' => now(),
+                'assigned_by' => auth()->id(),
+            ]
+        ]);
+        
+        // إذا كان الدور الأساسي، حدث role_id
+        if ($isPrimary) {
+            $this->update(['role_id' => $roleId]);
+        }
+    }
+
+    /**
+     * إزالة دور من المستخدم
+     */
+    public function removeRole(Role|int $role): void
+    {
+        $roleId = $role instanceof Role ? $role->id : $role;
+        $this->roles()->detach($roleId);
+    }
+
+    /**
+     * مزامنة الأدوار
+     */
+    public function syncRoles(array $roleIds): void
+    {
+        $syncData = [];
+        foreach ($roleIds as $roleId) {
+            $syncData[$roleId] = [
+                'assigned_at' => now(),
+                'assigned_by' => auth()->id(),
+            ];
+        }
+        $this->roles()->sync($syncData);
+    }
+
+    // ==================== المساعدين ====================
+
     public function getDisplayNameAttribute(): string
     {
         if (app()->getLocale() === 'ar' && $this->name_ar) {
@@ -139,19 +285,61 @@ class User extends Authenticatable
         return $this->name_en ?? $this->name;
     }
 
-    /**
-     * هل المستخدم مدير نظام
-     */
     public function isSuperAdmin(): bool
     {
-        return $this->role?->code === 'super_admin';
+        return $this->role?->code === 'super_admin' || 
+               $this->roles()->where('code', 'super_admin')->exists();
+    }
+
+    public function isCompanyAdmin(): bool
+    {
+        return $this->role?->code === 'company_admin' ||
+               $this->roles()->where('code', 'company_admin')->exists();
     }
 
     /**
-     * هل المستخدم مدير شركة
+     * الحصول على جميع الوحدات المتاحة للمستخدم
      */
-    public function isCompanyAdmin(): bool
+    public function getAvailableModules()
     {
-        return $this->role?->code === 'company_admin';
+        if ($this->isSuperAdmin()) {
+            return SystemModule::where('is_active', true)->get();
+        }
+
+        $moduleIds = collect();
+        
+        // من الدور الرئيسي
+        if ($this->role) {
+            $moduleIds = $moduleIds->merge($this->role->systemModules()->pluck('system_modules.id'));
+        }
+        
+        // من الأدوار المتعددة
+        foreach ($this->roles as $role) {
+            $moduleIds = $moduleIds->merge($role->systemModules()->pluck('system_modules.id'));
+        }
+
+        return SystemModule::whereIn('id', $moduleIds->unique())->get();
+    }
+
+    /**
+     * الحصول على جميع الشاشات المتاحة للمستخدم
+     */
+    public function getAvailableScreens()
+    {
+        if ($this->isSuperAdmin()) {
+            return SystemScreen::where('is_active', true)->get();
+        }
+
+        $screenIds = collect();
+        
+        if ($this->role) {
+            $screenIds = $screenIds->merge($this->role->systemScreens()->pluck('system_screens.id'));
+        }
+        
+        foreach ($this->roles as $role) {
+            $screenIds = $screenIds->merge($role->systemScreens()->pluck('system_screens.id'));
+        }
+
+        return SystemScreen::whereIn('id', $screenIds->unique())->get();
     }
 }

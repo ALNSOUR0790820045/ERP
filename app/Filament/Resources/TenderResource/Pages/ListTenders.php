@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\TenderResource\Pages;
 
 use App\Filament\Resources\TenderResource;
-use App\Filament\Pages\TenderWorkflow;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
@@ -18,7 +17,11 @@ class ListTenders extends ListRecords
                 ->label('رصد عطاء جديد')
                 ->icon('heroicon-o-plus')
                 ->color('primary')
-                ->url(TenderWorkflow::getUrl()),
+                ->visible(function () {
+                    $user = auth()->user();
+                    return $user->isSuperAdmin() || $user->hasPermission('tenders.tender.create');
+                })
+                ->url(fn () => TenderResource::getUrl('create')),
         ];
     }
 }
